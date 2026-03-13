@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% block title %}Create Character{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-brand font-bold mb-6 text-th-text">Create a New Character</h1>
+
+<form method="POST" id="create-form" class="space-y-8 max-w-3xl">
+
+    {# ===== BASICS ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Basics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label for="name" class="block text-sm font-medium mb-1 text-th-text">Character Name *</label>
+                <input type="text" id="name" name="name" required
+                       class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="level" class="block text-sm font-medium mb-1 text-th-text">Level</label>
+                <input type="number" id="level" name="level" value="1" min="1" max="20"
+                       class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent"
+                       onchange="onLevelChange()">
+                <div class="text-xs text-th-muted mt-1" id="level-info">Prof: +2 | HP: hit die max + CON mod</div>
+            </div>
+            <div>
+                <label for="alignment" class="block text-sm font-medium mb-1 text-th-text">Alignment</label>
+                <select id="alignment" name="alignment" class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent">
+                    <option value="">Choose...</option>
+                    <option>Lawful Good</option>
+                    <option>Neutral Good</option>
+                    <option>Chaotic Good</option>
+                    <option>Lawful Neutral</option>
+                    <option>True Neutral</option>
+                    <option>Chaotic Neutral</option>
+                    <option>Lawful Evil</option>
+                    <option>Neutral Evil</option>
+                    <option>Chaotic Evil</option>
+                </select>
+            </div>
+        </div>
+    </section>
+
+    {# ===== RACE ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Race</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="race" class="block text-sm font-medium mb-1 text-th-text">Race *</label>
+                <select id="race" name="race" required class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent"
+                        onchange="onRaceChange()">
+                    <option value="">Choose...</option>
+                    {% for r in race_list %}
+                    <option value="{{ r.index }}">{{ r.name }}</option>
+                    {% endfor %}
+                    <option value="custom">-- Custom Race --</option>
+                </select>
+            </div>
+            <div id="custom-race-div" class="hidden">
+                <label for="custom_race_name" class="block text-sm font-medium mb-1 text-th-text">Custom Race Name</label>
+                <input type="text" id="custom_race_name" name="custom_race_name"
+                       class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+        </div>
+        <div id="race-info" class="mt-3 text-sm text-th-muted"></div>
+    </section>
+
+    {# ===== CLASS ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Class</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="class" class="block text-sm font-medium mb-1 text-th-text">Class *</label>
+                <select id="class" name="class" required class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent"
+                        onchange="onClassChange()">
+                    <option value="">Choose...</option>
+                    {% for c in class_list %}
+                    <option value="{{ c.index }}">{{ c.name }} (d{{ c.hit_die }})</option>
+                    {% endfor %}
+                    <option value="custom">-- Custom Class --</option>
+                </select>
+            </div>
+            <div id="custom-class-div" class="hidden">
+                <label for="custom_class_name" class="block text-sm font-medium mb-1 text-th-text">Custom Class Name</label>
+                <input type="text" id="custom_class_name" name="custom_class_name"
+                       class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+        </div>
+        <div id="class-info" class="mt-3 text-sm text-th-muted"></div>
+    </section>
+
+    {# ===== ABILITY SCORES ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Ability Scores</h2>
+        <div class="mb-4 flex gap-2">
+            <button type="button" onclick="rollScores()" class="bg-th-accent text-white px-3 py-1.5 rounded text-sm hover:bg-th-accent-h transition-colors">
+                Roll 4d6 Drop Lowest
+            </button>
+            <button type="button" onclick="useStandardArray()" class="bg-th-surface-alt text-th-text border border-th-border px-3 py-1.5 rounded text-sm hover:bg-th-border transition-colors">
+                Standard Array
+            </button>
+            <button type="button" onclick="clearScores()" class="bg-th-surface-alt text-th-muted border border-th-border px-3 py-1.5 rounded text-sm hover:bg-th-border transition-colors">
+                Clear
+            </button>
+        </div>
+        <div id="roll-results" class="mb-3 text-sm text-th-muted hidden"></div>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {% for ability in ['str', 'dex', 'con', 'int', 'wis', 'cha'] %}
+            <div>
+                <label for="score_{{ ability }}" class="block text-sm font-medium mb-1 text-th-text">
+                    {{ ability | upper }}
+                </label>
+                <input type="number" id="score_{{ ability }}" name="score_{{ ability }}"
+                       min="1" max="30" value="10"
+                       class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-center focus:outline-none focus:ring-1 focus:ring-th-accent">
+                <div class="text-xs text-th-muted text-center mt-1" id="mod_{{ ability }}">Mod: +0</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div id="racial-bonus-info" class="mt-3 text-sm text-th-accent"></div>
+    </section>
+
+    {# ===== BACKGROUND ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Background</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="background" class="block text-sm font-medium mb-1 text-th-text">Background *</label>
+                <select id="background" name="background" class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md focus:outline-none focus:ring-1 focus:ring-th-accent"
+                        onchange="onBackgroundChange()">
+                    <option value="">Choose...</option>
+                    <option value="Acolyte">Acolyte (SRD)</option>
+                    <option value="Charlatan">Charlatan</option>
+                    <option value="Criminal">Criminal</option>
+                    <option value="Entertainer">Entertainer</option>
+                    <option value="Folk Hero">Folk Hero</option>
+                    <option value="Guild Artisan">Guild Artisan</option>
+                    <option value="Hermit">Hermit</option>
+                    <option value="Noble">Noble</option>
+                    <option value="Outlander">Outlander</option>
+                    <option value="Sage">Sage</option>
+                    <option value="Sailor">Sailor</option>
+                    <option value="Soldier">Soldier</option>
+                    <option value="Urchin">Urchin</option>
+                    <option value="custom">-- Custom --</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-4">
+            <label class="block text-sm font-medium mb-1 text-th-text">Background Skill Proficiencies</label>
+            <p class="text-xs text-th-muted mb-2">Select 2 skills from your background. For non-SRD backgrounds, pick the skills listed in your source book.</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-1">
+                {% for skill in all_skills %}
+                <label class="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" name="background_skills" value="{{ skill }}"
+                           class="bg-skill-checkbox">
+                    {{ skill }} <span class="text-xs text-th-faint">({{ skill_abilities[skill] | upper }})</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {# ===== SKILL PROFICIENCIES (from class) ===== #}
+    <section class="card shadow-sm p-6" id="class-skills-section">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Class Skill Proficiencies</h2>
+        <p id="skill-instructions" class="text-sm text-th-muted mb-3">Select a class first to see available skills.</p>
+        <div id="class-skill-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-1">
+        </div>
+    </section>
+
+    {# ===== SPELLS (shown for casters) ===== #}
+    <section class="card shadow-sm p-6 hidden" id="spells-section">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Spells</h2>
+
+        <div id="cantrips-div" class="mb-4">
+            <h3 class="font-medium text-sm mb-2">Cantrips</h3>
+            <p id="cantrip-instructions" class="text-xs text-th-muted mb-2"></p>
+            <div id="cantrip-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-1"></div>
+        </div>
+
+        <div id="spells-div">
+            <p id="spell-instructions" class="text-xs text-th-muted mb-2"></p>
+            <div id="spell-checkboxes-container"></div>
+        </div>
+    </section>
+
+    {# ===== EQUIPMENT ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Equipment</h2>
+        <p class="text-xs text-th-muted mb-2">Leave blank to use default class starting equipment, or enter your own (one item per line).</p>
+        <textarea id="equipment_text" name="equipment_text" rows="4"
+                  class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent"
+                  placeholder="e.g.&#10;Longsword&#10;Chain mail&#10;Shield&#10;Explorer's pack"></textarea>
+    </section>
+
+    {# ===== PERSONALITY ===== #}
+    <section class="card shadow-sm p-6">
+        <h2 class="text-lg font-bold mb-4 text-th-text">Personality (Optional)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="personality_traits" class="block text-sm font-medium mb-1 text-th-text">Personality Traits</label>
+                <textarea id="personality_traits" name="personality_traits" rows="2"
+                          class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent"></textarea>
+            </div>
+            <div>
+                <label for="ideals" class="block text-sm font-medium mb-1 text-th-text">Ideals</label>
+                <textarea id="ideals" name="ideals" rows="2"
+                          class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent"></textarea>
+            </div>
+            <div>
+                <label for="bonds" class="block text-sm font-medium mb-1 text-th-text">Bonds</label>
+                <textarea id="bonds" name="bonds" rows="2"
+                          class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent"></textarea>
+            </div>
+            <div>
+                <label for="flaws" class="block text-sm font-medium mb-1 text-th-text">Flaws</label>
+                <textarea id="flaws" name="flaws" rows="2"
+                          class="w-full px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <div class="flex gap-4">
+        <button type="submit" class="bg-th-accent text-white px-6 py-3 rounded-md hover:bg-th-accent-h font-medium transition-colors">
+            Create Character
+        </button>
+        <a href="{{ url_for('characters.character_list') }}" class="px-6 py-3 text-th-muted hover:text-th-text transition-colors">
+            Cancel
+        </a>
+    </div>
+</form>
+
+<script>
+const raceData = {{ race_data_json | safe }};
+const classData = {{ class_data_json | safe }};
+const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
+// Full caster spell slot progression by level (index 0 = level 1)
+const FULL_CASTER_MAX_SPELL_LEVEL = [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,9,9];
+const HALF_CASTER_MAX_SPELL_LEVEL = [0,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5];
+const WARLOCK_MAX_SPELL_LEVEL     = [1,1,2,2,3,3,4,4,5,5,5,5,5,5,5,5,5,5,5,5];
+
+function abilityMod(score) {
+    return Math.floor((score - 10) / 2);
+}
+
+function formatMod(mod) {
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
+function updateModifiers() {
+    abilities.forEach(a => {
+        const input = document.getElementById(`score_${a}`);
+        const modDiv = document.getElementById(`mod_${a}`);
+        const score = parseInt(input.value) || 10;
+        modDiv.textContent = `Mod: ${formatMod(abilityMod(score))}`;
+    });
+}
+
+// Update modifiers on any score change
+abilities.forEach(a => {
+    document.getElementById(`score_${a}`).addEventListener('input', updateModifiers);
+});
+
+function rollScores() {
+    const rolls = [];
+    for (let i = 0; i < 6; i++) {
+        const dice = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1);
+        dice.sort((a, b) => b - a);
+        const total = dice[0] + dice[1] + dice[2];
+        rolls.push({ total, dice });
+    }
+    rolls.sort((a, b) => b.total - a.total);
+
+    const resultDiv = document.getElementById('roll-results');
+    resultDiv.classList.remove('hidden');
+    resultDiv.innerHTML = '<strong>Rolled:</strong> ' +
+        rolls.map(r => `${r.total} (${r.dice.join(',')})`).join(' | ') +
+        '<br><em class="text-xs">Assign these values to your abilities below, or re-roll.</em>';
+
+    abilities.forEach((a, i) => {
+        document.getElementById(`score_${a}`).value = rolls[i].total;
+    });
+    updateModifiers();
+}
+
+function useStandardArray() {
+    const arr = [15, 14, 13, 12, 10, 8];
+    abilities.forEach((a, i) => {
+        document.getElementById(`score_${a}`).value = arr[i];
+    });
+    document.getElementById('roll-results').classList.add('hidden');
+    updateModifiers();
+}
+
+function clearScores() {
+    abilities.forEach(a => {
+        document.getElementById(`score_${a}`).value = 10;
+    });
+    document.getElementById('roll-results').classList.add('hidden');
+    updateModifiers();
+}
+
+function onRaceChange() {
+    const sel = document.getElementById('race').value;
+    const customDiv = document.getElementById('custom-race-div');
+    const infoDiv = document.getElementById('race-info');
+    const bonusDiv = document.getElementById('racial-bonus-info');
+
+    if (sel === 'custom') {
+        customDiv.classList.remove('hidden');
+        infoDiv.textContent = '';
+        bonusDiv.textContent = '';
+        return;
+    }
+    customDiv.classList.add('hidden');
+
+    const race = raceData[sel];
+    if (!race) {
+        infoDiv.textContent = '';
+        bonusDiv.textContent = '';
+        return;
+    }
+
+    infoDiv.textContent = `Speed: ${race.speed} ft`;
+    if (race.subraces && race.subraces.length > 0) {
+        infoDiv.textContent += ` | Subraces: ${race.subraces.map(s => s.name).join(', ')}`;
+    }
+
+    if (race.ability_bonuses.length > 0) {
+        const bonuses = race.ability_bonuses.map(b => `${b.ability.toUpperCase()} +${b.bonus}`).join(', ');
+        bonusDiv.textContent = `Racial bonuses (applied on save): ${bonuses}`;
+    } else {
+        bonusDiv.textContent = '';
+    }
+}
+
+function onClassChange() {
+    const sel = document.getElementById('class').value;
+    const customDiv = document.getElementById('custom-class-div');
+    const infoDiv = document.getElementById('class-info');
+    const skillDiv = document.getElementById('class-skill-checkboxes');
+    const skillInstr = document.getElementById('skill-instructions');
+    const spellsSection = document.getElementById('spells-section');
+
+    if (sel === 'custom') {
+        customDiv.classList.remove('hidden');
+        infoDiv.textContent = '';
+        skillDiv.innerHTML = '';
+        skillInstr.textContent = 'Custom class — add skills manually.';
+        spellsSection.classList.add('hidden');
+        return;
+    }
+    customDiv.classList.add('hidden');
+
+    const cls = classData[sel];
+    if (!cls) {
+        infoDiv.textContent = '';
+        skillDiv.innerHTML = '';
+        skillInstr.textContent = 'Select a class first.';
+        spellsSection.classList.add('hidden');
+        return;
+    }
+
+    const level = getCharLevel();
+    const avgRoll = Math.floor(cls.hit_die / 2) + 1;
+    const hpFormula = level === 1
+        ? `HP: d${cls.hit_die} max + CON mod`
+        : `HP: ${cls.hit_die} + ${level - 1}×(${avgRoll}+CON mod)`;
+    infoDiv.textContent = `Hit Die: d${cls.hit_die} | Saves: ${cls.saving_throws.map(s => s.toUpperCase()).join(', ')} | ${hpFormula}`;
+
+    // Skill choices
+    skillInstr.textContent = `Choose ${cls.num_skill_choices} skills:`;
+    skillDiv.innerHTML = '';
+    cls.skill_options.forEach(skill => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-1.5 text-sm';
+        label.innerHTML = `<input type="checkbox" name="class_skills" value="${skill}" class="class-skill-checkbox"> ${skill}`;
+        skillDiv.appendChild(label);
+    });
+
+    // Limit checkboxes
+    skillDiv.addEventListener('change', () => {
+        const checked = skillDiv.querySelectorAll('input:checked');
+        const unchecked = skillDiv.querySelectorAll('input:not(:checked)');
+        if (checked.length >= cls.num_skill_choices) {
+            unchecked.forEach(cb => cb.disabled = true);
+        } else {
+            unchecked.forEach(cb => cb.disabled = false);
+        }
+    });
+
+    // Spells
+    if (cls.is_caster) {
+        spellsSection.classList.remove('hidden');
+        buildSpellCheckboxes(cls);
+    } else {
+        spellsSection.classList.add('hidden');
+    }
+}
+
+function getCharLevel() {
+    return parseInt(document.getElementById('level').value) || 1;
+}
+
+function getMaxSpellLevel(cls) {
+    const level = getCharLevel();
+    const idx = Math.max(0, Math.min(level - 1, 19));
+    if (cls.is_full_caster) return FULL_CASTER_MAX_SPELL_LEVEL[idx];
+    if (cls.is_half_caster) return HALF_CASTER_MAX_SPELL_LEVEL[idx];
+    if (cls.casting_ability) return WARLOCK_MAX_SPELL_LEVEL[idx]; // warlock
+    return 0;
+}
+
+function getCantripsKnown(cls) {
+    const level = getCharLevel();
+    let result = 0;
+    for (const [threshold, count] of (cls.cantrips_scaling || [])) {
+        if (level >= threshold) result = count;
+    }
+    return result || cls.cantrips_known;
+}
+
+function onLevelChange() {
+    const level = getCharLevel();
+    const profBonus = Math.floor((level - 1) / 4) + 2;
+    const infoDiv = document.getElementById('level-info');
+    infoDiv.textContent = `Prof: +${profBonus}` + (level >= 4 ? ' | ASI at level 4' : '');
+
+    // Rebuild spell checkboxes if a caster class is selected
+    const sel = document.getElementById('class').value;
+    const cls = classData[sel];
+    if (cls && cls.is_caster) {
+        buildSpellCheckboxes(cls);
+    }
+}
+
+function buildSpellCheckboxes(cls) {
+    const cantripDiv = document.getElementById('cantrip-checkboxes');
+    const spellContainer = document.getElementById('spell-checkboxes-container');
+    const cantripInstr = document.getElementById('cantrip-instructions');
+    const spellInstr = document.getElementById('spell-instructions');
+
+    cantripDiv.innerHTML = '';
+    spellContainer.innerHTML = '';
+
+    const cantripsKnown = getCantripsKnown(cls);
+    const maxSpellLvl = getMaxSpellLevel(cls);
+
+    // Cantrips
+    const cantrips = (cls.spells_by_level[0] || []);
+    cantripInstr.textContent = `Choose ${cantripsKnown} cantrips:`;
+    cantrips.forEach(spell => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-1.5 text-sm';
+        label.innerHTML = `<input type="checkbox" name="cantrips" value="${spell.index}"> ${spell.name}`;
+        cantripDiv.appendChild(label);
+    });
+
+    // Limit cantrip checkboxes
+    cantripDiv.addEventListener('change', () => {
+        const checked = cantripDiv.querySelectorAll('input:checked');
+        const unchecked = cantripDiv.querySelectorAll('input:not(:checked)');
+        if (checked.length >= cantripsKnown) {
+            unchecked.forEach(cb => cb.disabled = true);
+        } else {
+            unchecked.forEach(cb => cb.disabled = false);
+        }
+    });
+
+    // Spells for each available level
+    if (maxSpellLvl === 0) {
+        spellInstr.textContent = 'No spell slots available at this level.';
+        return;
+    }
+
+    const levelLabel = cls.is_prepared_caster ? 'Select spells to prepare:' : 'Select your known spells:';
+    spellInstr.textContent = levelLabel;
+
+    for (let lvl = 1; lvl <= maxSpellLvl; lvl++) {
+        const spells = (cls.spells_by_level[lvl] || []);
+        if (spells.length === 0) continue;
+
+        const heading = document.createElement('h4');
+        heading.className = 'font-medium text-sm mt-3 mb-1';
+        const ordinal = lvl === 1 ? '1st' : lvl === 2 ? '2nd' : lvl === 3 ? '3rd' : `${lvl}th`;
+        heading.textContent = `${ordinal}-Level Spells`;
+        spellContainer.appendChild(heading);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 md:grid-cols-3 gap-1';
+        spells.forEach(spell => {
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-1.5 text-sm';
+            label.innerHTML = `<input type="checkbox" name="spells" value="${spell.index}"> ${spell.name}`;
+            grid.appendChild(label);
+        });
+        spellContainer.appendChild(grid);
+    }
+}
+
+function onBackgroundChange() {
+    // Could add background-specific skill suggestions here
+}
+
+// Initialize
+updateModifiers();
+</script>
+{% endblock %}

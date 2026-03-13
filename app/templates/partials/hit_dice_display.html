@@ -1,0 +1,6 @@
+{# Hit dice display — OOB-swappable for rest results #}
+<div id="hit-dice-display" class="mt-3 text-sm text-th-text">
+    <span class="font-medium">Hit Dice:</span>
+    {{ character.hit_dice_remaining }}/{{ character.hit_dice_total }}
+    {% if character.classes %}(d{{ character.classes[0].hit_die }}){% endif %}
+</div>

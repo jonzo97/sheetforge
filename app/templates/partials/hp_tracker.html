@@ -1,0 +1,49 @@
+{# HP tracker with damage/heal/temp controls — swapped via HTMX #}
+<div id="hp-tracker">
+    <div class="flex justify-between items-center mb-1">
+        <span class="text-sm font-medium text-th-text">Hit Points</span>
+        <span class="text-xs text-th-muted">Max: {{ character.max_hp }}</span>
+    </div>
+
+    {# HP display with color coding — functional colors stay fixed #}
+    {% set hp_pct = (character.current_hp / character.max_hp * 100) if character.max_hp > 0 else 0 %}
+    <div class="text-3xl font-bold text-center py-2
+        {% if hp_pct > 50 %}text-green-500
+        {% elif hp_pct > 25 %}text-yellow-500
+        {% else %}text-red-500{% endif %}">
+        {{ character.current_hp }} / {{ character.max_hp }}
+    </div>
+
+    {% if character.temp_hp > 0 %}
+    <div class="text-center text-sm text-blue-400 mb-2">
+        Temp HP: {{ character.temp_hp }}
+    </div>
+    {% endif %}
+
+    {# Controls #}
+    <div class="flex items-center gap-2 mt-2">
+        <input type="number" id="hp-amount" name="amount" value="1" min="0"
+               class="w-16 text-center border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-th-accent">
+        <button hx-post="{{ url_for('characters.update_hp', character_id=character.id) }}"
+                hx-target="#hp-tracker" hx-swap="outerHTML"
+                hx-include="#hp-amount"
+                hx-vals='{"action": "damage"}'
+                class="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-2 rounded transition-colors min-h-[44px]">
+            Damage
+        </button>
+        <button hx-post="{{ url_for('characters.update_hp', character_id=character.id) }}"
+                hx-target="#hp-tracker" hx-swap="outerHTML"
+                hx-include="#hp-amount"
+                hx-vals='{"action": "heal"}'
+                class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm py-1 px-2 rounded transition-colors min-h-[44px]">
+            Heal
+        </button>
+        <button hx-post="{{ url_for('characters.update_hp', character_id=character.id) }}"
+                hx-target="#hp-tracker" hx-swap="outerHTML"
+                hx-include="#hp-amount"
+                hx-vals='{"action": "temp"}'
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-2 rounded transition-colors min-h-[44px]">
+            Temp
+        </button>
+    </div>
+</div>

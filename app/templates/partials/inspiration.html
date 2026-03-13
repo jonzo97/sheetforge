@@ -1,0 +1,12 @@
+{# Inspiration toggle — swapped via HTMX #}
+<div id="inspiration" class="mt-2 text-sm">
+    <button hx-post="{{ url_for('characters.toggle_inspiration', character_id=character.id) }}"
+            hx-target="#inspiration" hx-swap="outerHTML"
+            class="flex items-center gap-2 hover:bg-th-surface-alt rounded px-2 py-1 -ml-2 transition-colors text-th-text">
+        <span class="w-5 h-5 rounded border-2 border-yellow-500 flex items-center justify-center text-xs
+            {% if character.inspiration %}bg-yellow-400 text-yellow-900{% else %}bg-transparent{% endif %}">
+            {% if character.inspiration %}&#9733;{% endif %}
+        </span>
+        <span class="font-medium">Inspiration</span>
+    </button>
+</div>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="parchment">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sheetforge{% endblock %} — Sheetforge</title>
+
+    {# Fonts — Cinzel for brand/headings, system stack for body #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    th: {
+                        bg:          'var(--sf-bg)',
+                        surface:     'var(--sf-surface)',
+                        'surface-alt': 'var(--sf-surface-alt)',
+                        border:      'var(--sf-border)',
+                        text:        'var(--sf-text)',
+                        muted:       'var(--sf-muted)',
+                        faint:       'var(--sf-faint)',
+                        nav:         'var(--sf-nav)',
+                        'nav-text':  'var(--sf-nav-text)',
+                        'nav-muted': 'var(--sf-nav-muted)',
+                        accent:      'var(--sf-accent)',
+                        'accent-h':  'var(--sf-accent-hover)',
+                        heading:     'var(--sf-heading)',
+                        'stat-border': 'var(--sf-stat-border)',
+                        'prof':      'var(--sf-prof)',
+                        'input-bg':  'var(--sf-input-bg)',
+                        'input-border': 'var(--sf-input-border)',
+                    }
+                },
+                fontFamily: {
+                    'brand': ['Cinzel', 'serif'],
+                },
+            }
+        }
+    }
+    </script>
+
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        /* ===== THEME: Parchment (warm light — tavern) ===== */
+        [data-theme="parchment"] {
+            --sf-bg: #f0ead6;
+            --sf-surface: #faf6ec;
+            --sf-surface-alt: #ede6d3;
+            --sf-border: #c9b99a;
+            --sf-text: #2d2418;
+            --sf-muted: #6b5d4a;
+            --sf-faint: #a39580;
+            --sf-nav: #3d2b1f;
+            --sf-nav-text: #ede6d3;
+            --sf-nav-muted: #b5a48e;
+            --sf-accent: #7a4f2b;
+            --sf-accent-hover: #5e3b1e;
+            --sf-heading: #6b4423;
+            --sf-stat-border: #8b7355;
+            --sf-prof: #5c3d1e;
+            --sf-input-bg: #faf6ec;
+            --sf-input-border: #c9b99a;
+        }
+
+        /* ===== THEME: Underdark (dark stone) ===== */
+        [data-theme="underdark"] {
+            --sf-bg: #111827;
+            --sf-surface: #1e2536;
+            --sf-surface-alt: #283045;
+            --sf-border: #374357;
+            --sf-text: #e2e8f0;
+            --sf-muted: #94a3b8;
+            --sf-faint: #64748b;
+            --sf-nav: #0b0f1a;
+            --sf-nav-text: #e2e8f0;
+            --sf-nav-muted: #64748b;
+            --sf-accent: #38bdf8;
+            --sf-accent-hover: #0ea5e9;
+            --sf-heading: #38bdf8;
+            --sf-stat-border: #475569;
+            --sf-prof: #38bdf8;
+            --sf-input-bg: #283045;
+            --sf-input-border: #475569;
+        }
+
+        /* ===== THEME: Feywild (mystical purple) ===== */
+        [data-theme="feywild"] {
+            --sf-bg: #180f28;
+            --sf-surface: #221640;
+            --sf-surface-alt: #2e1c55;
+            --sf-border: #453270;
+            --sf-text: #ede0ff;
+            --sf-muted: #b09dd0;
+            --sf-faint: #806eb0;
+            --sf-nav: #0e0818;
+            --sf-nav-text: #ede0ff;
+            --sf-nav-muted: #806eb0;
+            --sf-accent: #d4a843;
+            --sf-accent-hover: #c09530;
+            --sf-heading: #d4a843;
+            --sf-stat-border: #553d80;
+            --sf-prof: #d4a843;
+            --sf-input-bg: #2e1c55;
+            --sf-input-border: #553d80;
+        }
+
+        /* ===== THEME: Dragonfire (crimson & gold) ===== */
+        [data-theme="dragonfire"] {
+            --sf-bg: #1a100c;
+            --sf-surface: #2a1810;
+            --sf-surface-alt: #3a221a;
+            --sf-border: #5a3828;
+            --sf-text: #f0ddd0;
+            --sf-muted: #c0a088;
+            --sf-faint: #8a7060;
+            --sf-nav: #120a06;
+            --sf-nav-text: #f0ddd0;
+            --sf-nav-muted: #8a7060;
+            --sf-accent: #d4943c;
+            --sf-accent-hover: #c07828;
+            --sf-heading: #d4943c;
+            --sf-stat-border: #6a4830;
+            --sf-prof: #d4943c;
+            --sf-input-bg: #3a221a;
+            --sf-input-border: #6a4830;
+        }
+
+        /* Stat boxes & prof dots — themed */
+        .stat-box {
+            border: 2px solid var(--sf-stat-border);
+            border-radius: 0.5rem;
+            text-align: center;
+            padding: 0.5rem;
+            min-width: 4.5rem;
+            background: var(--sf-surface);
+        }
+        .stat-mod { font-size: 1.5rem; font-weight: bold; color: var(--sf-text); }
+        .stat-score { font-size: 0.875rem; color: var(--sf-muted); }
+        .prof-dot {
+            display: inline-block; width: 0.6rem; height: 0.6rem;
+            border-radius: 50%; border: 1.5px solid var(--sf-faint);
+        }
+        .prof-dot.filled { background-color: var(--sf-prof); border-color: var(--sf-prof); }
+
+        /* Card panels */
+        .card {
+            background: var(--sf-surface);
+            border: 1px solid var(--sf-border);
+            border-radius: 0.5rem;
+        }
+
+        /* Decorative section heading */
+        .section-heading {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--sf-heading);
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--sf-border);
+        }
+
+        /* Theme transition for smooth switching */
+        html { transition: background-color 0.3s ease, color 0.3s ease; }
+
+        /* Mobile touch targets & usability */
+        @media (max-width: 1023px) {
+            button, [type="submit"], a.btn {
+                min-height: 44px;
+            }
+            * { touch-action: manipulation; }
+        }
+    </style>
+
+    {# Apply saved theme before paint #}
+    <script>
+    (function() {
+        var t = localStorage.getItem('sf-theme') || 'parchment';
+        document.documentElement.setAttribute('data-theme', t);
+    })();
+    </script>
+</head>
+<body class="bg-th-bg text-th-text min-h-screen">
+    {# ===== NAVBAR ===== #}
+    <nav class="bg-th-nav px-6 py-3 flex items-center justify-between shadow-md">
+        <a href="{% if current_user.is_authenticated %}{{ url_for('characters.character_list') }}{% else %}/{% endif %}"
+           class="text-xl font-brand font-bold tracking-wider text-th-nav-text hover:opacity-80 transition-opacity flex items-center gap-2">
+            {# d20 icon #}
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/>
+                <line x1="12" y1="2" x2="12" y2="22"/>
+                <line x1="2" y1="8.5" x2="22" y2="8.5"/>
+                <line x1="2" y1="15.5" x2="22" y2="15.5"/>
+                <line x1="2" y1="8.5" x2="12" y2="22"/>
+                <line x1="22" y1="8.5" x2="12" y2="22"/>
+            </svg>
+            Sheetforge
+        </a>
+        <div class="flex items-center gap-4">
+            {% if current_user.is_authenticated %}
+                <span class="text-th-nav-muted text-sm hidden sm:inline">{{ current_user.username }}</span>
+                <a href="{{ url_for('characters.character_list') }}" class="text-th-nav-muted hover:text-th-nav-text text-sm transition-colors">Characters</a>
+                <a href="{{ url_for('auth.logout') }}" class="text-th-nav-muted hover:text-th-nav-text text-sm transition-colors">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="text-th-nav-muted hover:text-th-nav-text text-sm transition-colors">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="text-th-nav-muted hover:text-th-nav-text text-sm transition-colors">Register</a>
+            {% endif %}
+
+            {# ===== HAMBURGER MENU / THEME SWITCHER ===== #}
+            <div x-data="{ open: false }" class="relative">
+                <button @click="open = !open" @click.away="open = false"
+                        class="text-th-nav-muted hover:text-th-nav-text transition-colors p-1"
+                        aria-label="Menu">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <div x-show="open" x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                     class="absolute right-0 mt-2 w-48 card shadow-lg z-50 py-1"
+                     x-cloak>
+                    <div class="px-3 py-2 text-xs font-bold text-th-heading uppercase tracking-wider border-b border-th-border">
+                        Theme
+                    </div>
+                    <button @click="document.documentElement.setAttribute('data-theme','parchment'); localStorage.setItem('sf-theme','parchment'); open=false"
+                            class="w-full text-left px-3 py-2 text-sm text-th-text hover:bg-th-surface-alt flex items-center gap-2 transition-colors">
+                        <span class="w-3 h-3 rounded-full bg-[#c9b99a] border border-[#8b7355]"></span>
+                        Parchment
+                    </button>
+                    <button @click="document.documentElement.setAttribute('data-theme','underdark'); localStorage.setItem('sf-theme','underdark'); open=false"
+                            class="w-full text-left px-3 py-2 text-sm text-th-text hover:bg-th-surface-alt flex items-center gap-2 transition-colors">
+                        <span class="w-3 h-3 rounded-full bg-[#38bdf8] border border-[#475569]"></span>
+                        Underdark
+                    </button>
+                    <button @click="document.documentElement.setAttribute('data-theme','feywild'); localStorage.setItem('sf-theme','feywild'); open=false"
+                            class="w-full text-left px-3 py-2 text-sm text-th-text hover:bg-th-surface-alt flex items-center gap-2 transition-colors">
+                        <span class="w-3 h-3 rounded-full bg-[#d4a843] border border-[#553d80]"></span>
+                        Feywild
+                    </button>
+                    <button @click="document.documentElement.setAttribute('data-theme','dragonfire'); localStorage.setItem('sf-theme','dragonfire'); open=false"
+                            class="w-full text-left px-3 py-2 text-sm text-th-text hover:bg-th-surface-alt flex items-center gap-2 transition-colors">
+                        <span class="w-3 h-3 rounded-full bg-[#d4943c] border border-[#6a4830]"></span>
+                        Dragonfire
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 px-4 py-3 rounded-md text-sm
+                        {% if category == 'error' %}bg-red-900/20 text-red-400 border border-red-800/30
+                        {% elif category == 'success' %}bg-green-900/20 text-green-400 border border-green-800/30
+                        {% else %}bg-blue-900/20 text-blue-400 border border-blue-800/30{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {# Roll result overlay — HTMX targets this container #}
+    <div id="roll-log" class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <script>
+    // Auto-dismiss roll results after 8 seconds
+    const rollLog = document.getElementById('roll-log');
+    if (rollLog) {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) {
+                        node.classList.add('pointer-events-auto');
+                        node.addEventListener('click', function() { node.remove(); });
+                        setTimeout(function() {
+                            node.style.transition = 'opacity 0.5s';
+                            node.style.opacity = '0';
+                            setTimeout(function() { node.remove(); }, 500);
+                        }, 8000);
+                    }
+                });
+            });
+        });
+        observer.observe(rollLog, { childList: true });
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{# Generated invite link with copy button #}
+<div class="p-3 bg-th-surface-alt rounded-md border border-th-border text-sm" x-data="{ copied: false }">
+    <div class="text-th-heading font-medium mb-1">Invite Link Created</div>
+    <div class="flex items-center gap-2">
+        <input type="text" readonly value="{{ invite_url }}" id="invite-url"
+               class="flex-1 text-xs border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 font-mono focus:outline-none">
+        <button @click="navigator.clipboard.writeText(document.getElementById('invite-url').value); copied = true; setTimeout(() => copied = false, 2000)"
+                class="bg-th-accent hover:bg-th-accent-h text-white text-sm px-3 py-1 rounded transition-colors whitespace-nowrap min-h-[44px]"
+                x-text="copied ? 'Copied!' : 'Copy'">
+            Copy
+        </button>
+    </div>
+    <div class="text-xs text-th-faint mt-1">Share this link — it can only be used once.</div>
+</div>

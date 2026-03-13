@@ -1,0 +1,20 @@
+{# Dice roll result toast — appended to #roll-log via HTMX #}
+<div class="card shadow-lg p-3 min-w-[200px] cursor-pointer hover:opacity-90 transition-opacity">
+    <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-bold text-th-heading uppercase">{{ label }}</span>
+        <span class="text-xs text-th-faint font-mono">{{ expression }}</span>
+    </div>
+    {% if error %}
+    <div class="text-sm text-red-500">{{ error }}</div>
+    {% elif result %}
+    <div class="text-2xl font-bold text-center py-1
+        {% if '1d20' in expression %}
+            {% if result.crit == 1 %}text-yellow-400
+            {% elif result.crit == 2 %}text-red-500
+            {% else %}text-th-text{% endif %}
+        {% else %}text-th-text{% endif %}">
+        {{ result.total }}
+    </div>
+    <div class="text-xs text-th-faint text-center">{{ result }}</div>
+    {% endif %}
+</div>

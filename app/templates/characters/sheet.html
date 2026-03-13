@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}{{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+    <a href="{{ url_for('characters.character_list') }}" class="text-sm text-th-faint hover:text-th-text transition-colors">&larr; Back to Characters</a>
+
+    {# General purpose dice roller #}
+    <form hx-post="{{ url_for('characters.roll_custom', character_id=character.id) }}"
+          hx-target="#roll-log" hx-swap="afterbegin"
+          class="flex items-center gap-2">
+        <input type="text" name="expression" placeholder="2d6+3" value=""
+               class="w-28 text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 text-center font-mono focus:outline-none focus:ring-1 focus:ring-th-accent">
+        <button type="submit"
+                class="bg-th-accent hover:bg-th-accent-h text-white text-sm px-3 py-1 rounded flex items-center gap-1 transition-colors">
+            &#127922; Roll
+        </button>
+    </form>
+</div>
+
+{# ===== HEADER ===== #}
+<div class="card p-6 mb-4 shadow-sm">
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-3xl font-brand font-bold text-th-text">{{ character.name }}</h1>
+            <p class="text-th-muted mt-1">
+                Level {{ character.level }}
+                {% for cls in character.classes %}
+                    {{ cls.class_name }}{% if cls.subclass %} ({{ cls.subclass }}){% endif %}{% if not loop.last %} / {% endif %}
+                {% endfor %}
+                &middot; {{ character.race }}
+                {% if character.background %}&middot; {{ character.background }}{% endif %}
+            </p>
+            {% if character.alignment %}
+            <p class="text-sm text-th-faint">{{ character.alignment }}</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-4">
+            {# Inspiration toggle #}
+            {% include "partials/inspiration.html" %}
+            <div class="text-right">
+                <div class="text-sm text-th-muted">Proficiency Bonus</div>
+                <div class="text-2xl font-bold text-th-text">+{{ character.proficiency_bonus }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    {# ===== LEFT COLUMN: Abilities + Saves + Skills ===== #}
+    <div class="space-y-4">
+
+        {# Ability Scores — clickable for raw ability checks #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Ability Scores</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {% for a in abilities %}
+                <button hx-post="{{ url_for('characters.roll_check', character_id=character.id, ability=a.name|lower) }}"
+                        hx-target="#roll-log" hx-swap="afterbegin"
+                        class="stat-box hover:border-th-accent cursor-pointer transition-colors">
+                    <div class="text-xs font-bold text-th-heading">{{ a.name }}</div>
+                    <div class="stat-mod">{{ "+" if a.modifier >= 0 }}{{ a.modifier }}</div>
+                    <div class="stat-score">{{ a.score }}</div>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Saving Throws — clickable to roll #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Saving Throws</h2>
+            {% for save in saves %}
+            <button hx-post="{{ url_for('characters.roll_save', character_id=character.id, ability=save.ability|lower) }}"
+                    hx-target="#roll-log" hx-swap="afterbegin"
+                    class="flex items-center gap-2 py-0.5 text-sm w-full text-left hover:bg-th-surface-alt rounded px-1 -mx-1 cursor-pointer transition-colors text-th-text">
+                <span class="prof-dot {{ 'filled' if save.proficient }}"></span>
+                <span class="w-6 text-right font-mono">{{ "+" if save.bonus >= 0 }}{{ save.bonus }}</span>
+                <span>{{ save.ability }}</span>
+            </button>
+            {% endfor %}
+        </div>
+
+        {# Skills — clickable to roll #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Skills</h2>
+            {% for skill in skills %}
+            <button hx-post="{{ url_for('characters.roll_skill', character_id=character.id, skill_name=skill.name) }}"
+                    hx-target="#roll-log" hx-swap="afterbegin"
+                    class="flex items-center gap-2 py-0.5 text-sm w-full text-left hover:bg-th-surface-alt rounded px-1 -mx-1 cursor-pointer transition-colors text-th-text">
+                <span class="prof-dot {{ 'filled' if skill.proficient }}"></span>
+                <span class="w-6 text-right font-mono">{{ "+" if skill.bonus >= 0 }}{{ skill.bonus }}</span>
+                <span>{{ skill.name }}</span>
+                <span class="text-xs text-th-faint">({{ skill.ability }})</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ===== MIDDLE COLUMN: Combat + Features ===== #}
+    <div class="space-y-4">
+
+        {# Combat Stats #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Combat</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                <div class="stat-box">
+                    <div class="text-xs font-bold text-th-heading">AC</div>
+                    <div class="stat-mod">{{ character.armor_class }}</div>
+                </div>
+                <button hx-post="{{ url_for('characters.roll_initiative', character_id=character.id) }}"
+                        hx-target="#roll-log" hx-swap="afterbegin"
+                        class="stat-box hover:border-th-accent cursor-pointer transition-colors">
+                    <div class="text-xs font-bold text-th-heading">Initiative</div>
+                    <div class="stat-mod">{{ "+" if abilities[1].modifier >= 0 }}{{ abilities[1].modifier }}</div>
+                    <div class="text-xs text-th-accent">click to roll</div>
+                </button>
+                <div class="stat-box">
+                    <div class="text-xs font-bold text-th-heading">Speed</div>
+                    <div class="stat-mod">{{ character.speed }}</div>
+                    <div class="text-xs text-th-faint">ft</div>
+                </div>
+            </div>
+
+            {# Hit Points — HTMX interactive #}
+            <div class="mt-4 p-3 bg-th-surface-alt rounded-md">
+                {% include "partials/hp_tracker.html" %}
+            </div>
+
+            {# Hit Dice — swappable partial #}
+            {% include "partials/hit_dice_display.html" %}
+
+            {# Rest Buttons #}
+            {% include "partials/rest_panel.html" %}
+
+            {# Death Saves — HTMX interactive #}
+            {% include "partials/death_saves.html" %}
+
+            {# Passive Perception #}
+            <div class="mt-2 text-sm text-th-text">
+                <span class="font-medium">Passive Perception:</span>
+                {% set wis_score = character.ability_scores.wisdom %}
+                {% set perc_prof = 'none' %}
+                {% for sp in character.skill_proficiencies %}
+                    {% if sp.skill_name == 'Perception' %}
+                        {% set perc_prof = sp.proficiency_type %}
+                    {% endif %}
+                {% endfor %}
+                {{ 10 + ((wis_score - 10) // 2) + (character.proficiency_bonus if perc_prof != 'none' else 0) }}
+            </div>
+        </div>
+
+        {# Features & Traits — HTMX interactive #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Features & Traits</h2>
+            {% include "partials/feature_uses.html" %}
+        </div>
+    </div>
+
+    {# ===== RIGHT COLUMN: Spellcasting + Equipment + Personality ===== #}
+    <div class="space-y-4">
+
+        {# Spellcasting #}
+        {% if spellcasting %}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Spellcasting</h2>
+            <div class="grid grid-cols-3 gap-2 text-center text-sm mb-3">
+                <div>
+                    <div class="text-xs text-th-muted">Ability</div>
+                    <div class="font-bold text-th-text">{{ spellcasting.ability }}</div>
+                </div>
+                <div>
+                    <div class="text-xs text-th-muted">Save DC</div>
+                    <div class="font-bold text-th-text">{{ spellcasting.save_dc }}</div>
+                </div>
+                <div>
+                    <div class="text-xs text-th-muted">Attack</div>
+                    <div class="font-bold text-th-text">+{{ spellcasting.attack_bonus }}</div>
+                </div>
+            </div>
+
+            {# Spell Slots — HTMX interactive #}
+            {% if spellcasting.slots %}
+                {% set slots = spellcasting.slots %}
+                {% include "partials/spell_slots.html" %}
+            {% endif %}
+
+            {# Cantrips #}
+            {% if spellcasting.cantrips %}
+            <div class="mb-3">
+                <h3 class="text-xs font-bold text-th-heading mb-1">Cantrips</h3>
+                {% for spell in spellcasting.cantrips %}
+                <div class="text-sm text-th-text">{{ spell.spell_name }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Spells #}
+            {% if spellcasting.spells %}
+            <div>
+                <h3 class="text-xs font-bold text-th-heading mb-1">Spells</h3>
+                {% for spell in spellcasting.spells %}
+                <div class="text-sm flex items-center gap-1 text-th-text">
+                    {% if spell.prepared %}
+                    <span class="w-2 h-2 rounded-full bg-green-500 inline-block" title="Prepared"></span>
+                    {% endif %}
+                    {{ spell.spell_name }}
+                    <span class="text-xs text-th-faint">(Lvl {{ spell.spell_level }})</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Equipment — HTMX interactive #}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Equipment</h2>
+            {% include "partials/equipment_list.html" %}
+        </div>
+
+        {# Personality #}
+        {% if character.personality_traits or character.ideals or character.bonds or character.flaws %}
+        <div class="card p-4 shadow-sm">
+            <h2 class="section-heading">Personality</h2>
+            {% if character.personality_traits %}
+            <div class="mb-2">
+                <div class="text-xs font-bold text-th-heading">Traits</div>
+                <div class="text-sm text-th-text">{{ character.personality_traits }}</div>
+            </div>
+            {% endif %}
+            {% if character.ideals %}
+            <div class="mb-2">
+                <div class="text-xs font-bold text-th-heading">Ideals</div>
+                <div class="text-sm text-th-text">{{ character.ideals }}</div>
+            </div>
+            {% endif %}
+            {% if character.bonds %}
+            <div class="mb-2">
+                <div class="text-xs font-bold text-th-heading">Bonds</div>
+                <div class="text-sm text-th-text">{{ character.bonds }}</div>
+            </div>
+            {% endif %}
+            {% if character.flaws %}
+            <div>
+                <div class="text-xs font-bold text-th-heading">Flaws</div>
+                <div class="text-sm text-th-text">{{ character.flaws }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Notes — HTMX interactive #}
+        <div class="card p-4 shadow-sm">
+            {% include "partials/notes.html" %}
+        </div>
+
+        {# Delete #}
+        <div class="pt-4">
+            <form method="POST" action="{{ url_for('characters.delete', character_id=character.id) }}"
+                  onsubmit="return confirm('Are you sure you want to delete {{ character.name }}?')">
+                <button type="submit" class="text-red-500 hover:text-red-700 text-sm transition-colors">
+                    Delete Character
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

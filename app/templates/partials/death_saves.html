@@ -1,0 +1,36 @@
+{# Death saves tracker — swapped via HTMX #}
+<div id="death-saves" class="mt-2 text-sm text-th-text">
+    <div class="flex items-center justify-between">
+        <span class="font-medium">Death Saves:</span>
+        <button hx-post="{{ url_for('characters.update_death_save', character_id=character.id) }}"
+                hx-target="#death-saves" hx-swap="outerHTML"
+                hx-vals='{"action": "reset"}'
+                class="text-xs text-th-faint hover:text-th-text transition-colors">Reset</button>
+    </div>
+    <div class="flex items-center gap-4 mt-1">
+        <div class="flex items-center gap-1">
+            <span class="text-xs text-th-muted w-7">Pass</span>
+            {% for i in range(3) %}
+            <button hx-post="{{ url_for('characters.update_death_save', character_id=character.id) }}"
+                    hx-target="#death-saves" hx-swap="outerHTML"
+                    hx-vals='{"type": "success", "action": "add"}'
+                    class="w-7 h-7 sm:w-5 sm:h-5 rounded-full border-2 border-green-500
+                    {% if i < character.death_save_successes %}bg-green-500{% else %}bg-transparent{% endif %}
+                    hover:bg-green-400/50 cursor-pointer transition-colors">
+            </button>
+            {% endfor %}
+        </div>
+        <div class="flex items-center gap-1">
+            <span class="text-xs text-th-muted w-7">Fail</span>
+            {% for i in range(3) %}
+            <button hx-post="{{ url_for('characters.update_death_save', character_id=character.id) }}"
+                    hx-target="#death-saves" hx-swap="outerHTML"
+                    hx-vals='{"type": "failure", "action": "add"}'
+                    class="w-7 h-7 sm:w-5 sm:h-5 rounded-full border-2 border-red-500
+                    {% if i < character.death_save_failures %}bg-red-500{% else %}bg-transparent{% endif %}
+                    hover:bg-red-400/50 cursor-pointer transition-colors">
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,48 @@
+{# Feature list with use/recover tracking — swapped via HTMX #}
+<div id="feature-uses">
+    {% if character.features %}
+    {% for feat in character.features %}
+    <div class="mb-3">
+        <div class="font-medium text-sm text-th-text">{{ feat.feature_name }}
+            <span class="text-xs text-th-faint">({{ feat.source }})</span>
+        </div>
+        {% if feat.description %}
+        <div class="text-xs text-th-muted mt-0.5 line-clamp-3">{{ feat.description }}</div>
+        {% endif %}
+        {% if feat.uses_total is not none %}
+        <div class="flex items-center gap-2 mt-1">
+            <div class="flex gap-1">
+                {% for i in range(feat.uses_total) %}
+                <span class="w-3 h-3 rounded-full
+                    {% if i < feat.uses_remaining %}bg-th-accent{% else %}bg-th-surface-alt border border-th-border{% endif %}">
+                </span>
+                {% endfor %}
+            </div>
+            <span class="text-xs text-th-muted">{{ feat.uses_remaining }}/{{ feat.uses_total }}</span>
+            {% if feat.recharge_on %}
+            <span class="text-xs text-th-faint">({{ feat.recharge_on | replace('_', ' ') }})</span>
+            {% endif %}
+            <button hx-post="{{ url_for('characters.use_feature', character_id=character.id, feature_id=feat.id) }}"
+                    hx-target="#feature-uses" hx-swap="outerHTML"
+                    hx-vals='{"action": "use"}'
+                    class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-2 py-0.5 transition-colors
+                    {% if feat.uses_remaining == 0 %}opacity-50 cursor-not-allowed{% endif %}"
+                    {% if feat.uses_remaining == 0 %}disabled{% endif %}>
+                Use
+            </button>
+            <button hx-post="{{ url_for('characters.use_feature', character_id=character.id, feature_id=feat.id) }}"
+                    hx-target="#feature-uses" hx-swap="outerHTML"
+                    hx-vals='{"action": "recover"}'
+                    class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-2 py-0.5 transition-colors
+                    {% if feat.uses_remaining >= feat.uses_total %}opacity-50 cursor-not-allowed{% endif %}"
+                    {% if feat.uses_remaining >= feat.uses_total %}disabled{% endif %}>
+                +1
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="text-sm text-th-faint">No features yet.</p>
+    {% endif %}
+</div>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}My Characters{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-brand font-bold text-th-text">My Characters</h1>
+    <div class="flex items-center gap-2">
+        <button hx-post="{{ url_for('auth.create_invite') }}"
+                hx-target="#invite-result" hx-swap="innerHTML"
+                class="bg-th-surface-alt hover:bg-th-border text-th-text px-4 py-2 rounded-md text-sm border border-th-border transition-colors">
+            Invite a Friend
+        </button>
+        <a href="{{ url_for('characters.create') }}"
+           class="bg-th-accent text-white px-4 py-2 rounded-md hover:bg-th-accent-h text-sm transition-colors">
+            + New Character
+        </a>
+    </div>
+</div>
+<div id="invite-result" class="mb-4"></div>
+
+{% if characters %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for char in characters %}
+    <a href="{{ url_for('characters.sheet', character_id=char.id) }}"
+       class="block card p-4 hover:shadow-md transition-shadow group">
+        <h2 class="text-lg font-bold text-th-text group-hover:text-th-accent transition-colors">{{ char.name }}</h2>
+        <p class="text-sm text-th-muted">
+            Level {{ char.level }}
+            {% if char.classes %}{{ char.classes[0].class_name }}{% endif %}
+            &middot; {{ char.race }}
+        </p>
+        <div class="mt-2 flex gap-4 text-xs text-th-faint">
+            <span>HP: {{ char.current_hp }}/{{ char.max_hp }}</span>
+            <span>AC: {{ char.armor_class }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-12 text-th-muted">
+    <p class="text-lg mb-2">No characters yet.</p>
+    <a href="{{ url_for('characters.create') }}" class="text-th-accent hover:underline">Create your first character</a>
+</div>
+{% endif %}
+{% endblock %}

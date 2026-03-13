@@ -1,0 +1,36 @@
+{# Rest result summary + OOB swaps for affected partials #}
+<div class="p-3 bg-th-surface-alt rounded-md border border-th-border text-sm text-th-text animate-fade-in">
+    <div class="font-medium text-th-heading mb-1">{{ rest_type }}</div>
+    <div>{{ summary }}</div>
+    {% if details %}
+    <ul class="mt-1 text-xs text-th-muted list-disc list-inside">
+        {% for detail in details %}
+        <li>{{ detail }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+{# OOB swaps — silently update affected sections #}
+<div id="hp-tracker" hx-swap-oob="outerHTML">
+    {% include "partials/hp_tracker.html" %}
+</div>
+
+<div id="hit-dice-display" hx-swap-oob="outerHTML">
+    {% include "partials/hit_dice_display.html" %}
+</div>
+
+<div id="feature-uses" hx-swap-oob="outerHTML">
+    {% include "partials/feature_uses.html" %}
+</div>
+
+{% if rest_type == "Long Rest" %}
+<div id="spell-slots" hx-swap-oob="outerHTML">
+    {% set slots = character.spell_slots | sort(attribute='slot_level') %}
+    {% include "partials/spell_slots.html" %}
+</div>
+
+<div id="death-saves" hx-swap-oob="outerHTML">
+    {% include "partials/death_saves.html" %}
+</div>
+{% endif %}

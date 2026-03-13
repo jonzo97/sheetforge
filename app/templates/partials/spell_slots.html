@@ -1,0 +1,29 @@
+{# Spell slot tracker — clickable dots to use/recover #}
+<div id="spell-slots" class="mb-3">
+    <h3 class="text-xs font-bold text-th-heading mb-1">Spell Slots</h3>
+    {% for slot in slots %}
+    <div class="flex items-center gap-2 text-sm mb-1">
+        <span class="text-xs text-th-muted w-12">Level {{ slot.slot_level }}</span>
+        {% set available = slot.total - slot.used %}
+        {% for i in range(slot.total) %}
+            {% if i < available %}
+            {# Available slot — click to use #}
+            <button hx-post="{{ url_for('characters.update_spell_slot', character_id=character.id, level=slot.slot_level) }}"
+                    hx-target="#spell-slots" hx-swap="outerHTML"
+                    hx-vals='{"action": "use"}'
+                    class="w-4 h-4 rounded-full bg-blue-500 hover:bg-blue-700 cursor-pointer border-0 transition-colors"
+                    title="Click to use">
+            </button>
+            {% else %}
+            {# Used slot — click to recover #}
+            <button hx-post="{{ url_for('characters.update_spell_slot', character_id=character.id, level=slot.slot_level) }}"
+                    hx-target="#spell-slots" hx-swap="outerHTML"
+                    hx-vals='{"action": "recover"}'
+                    class="w-4 h-4 rounded-full bg-th-surface-alt hover:bg-blue-400/50 cursor-pointer border border-th-border transition-colors"
+                    title="Click to recover">
+            </button>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>

@@ -1,0 +1,37 @@
+{# Rest buttons — short rest with hit dice form, long rest with confirmation #}
+<div id="rest-panel" class="mt-3" x-data="{ showShortRest: false }">
+    <div class="flex gap-2">
+        <button @click="showShortRest = !showShortRest"
+                class="flex-1 bg-th-surface-alt hover:bg-th-border text-th-text text-sm py-2 px-3 rounded border border-th-border transition-colors min-h-[44px]">
+            Short Rest
+        </button>
+        <button hx-post="{{ url_for('characters.rest_long', character_id=character.id) }}"
+                hx-target="#rest-result" hx-swap="innerHTML"
+                hx-confirm="Take a long rest? This will restore HP, spell slots, and features."
+                class="flex-1 bg-th-surface-alt hover:bg-th-border text-th-text text-sm py-2 px-3 rounded border border-th-border transition-colors min-h-[44px]">
+            Long Rest
+        </button>
+    </div>
+
+    {# Short rest hit dice form #}
+    <div x-show="showShortRest" x-transition class="mt-2 p-3 bg-th-surface-alt rounded-md">
+        <form hx-post="{{ url_for('characters.rest_short', character_id=character.id) }}"
+              hx-target="#rest-result" hx-swap="innerHTML"
+              class="flex items-center gap-2">
+            <label class="text-sm text-th-muted whitespace-nowrap">Hit dice to spend:</label>
+            <input type="number" name="hit_dice_count" value="1" min="0"
+                   max="{{ character.hit_dice_remaining }}"
+                   class="w-16 text-center border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-th-accent">
+            <button type="submit"
+                    class="bg-th-accent hover:bg-th-accent-h text-white text-sm px-4 py-1 rounded transition-colors min-h-[44px]">
+                Rest
+            </button>
+        </form>
+        <div class="text-xs text-th-faint mt-1">
+            {{ character.hit_dice_remaining }} hit dice available
+            {% if character.classes %}(d{{ character.classes[0].hit_die }}){% endif %}
+        </div>
+    </div>
+</div>
+
+<div id="rest-result" class="mt-2"></div>

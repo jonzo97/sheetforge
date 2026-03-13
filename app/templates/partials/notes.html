@@ -1,0 +1,11 @@
+{# Editable notes — auto-saves on blur via HTMX #}
+<div id="character-notes">
+    <h2 class="section-heading">Notes</h2>
+    <textarea name="notes"
+              hx-post="{{ url_for('characters.update_notes', character_id=character.id) }}"
+              hx-target="#character-notes" hx-swap="outerHTML"
+              hx-trigger="blur"
+              class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded p-2 min-h-[80px] resize-y focus:outline-none focus:ring-1 focus:ring-th-accent"
+              placeholder="Add notes...">{{ character.notes or '' }}</textarea>
+    <div class="text-xs text-th-faint mt-1">Auto-saves when you click away</div>
+</div>
