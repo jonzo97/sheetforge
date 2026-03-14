@@ -1,0 +1,34 @@
+{# Weapon attack + damage result — appended to #roll-log via HTMX #}
+<div class="card shadow-lg p-3 min-w-[200px]">
+    <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-bold text-th-heading uppercase">{{ weapon_name }}</span>
+        <span class="text-xs text-th-faint font-mono">{{ attack_expr }}</span>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+        {# Attack roll #}
+        <div class="text-center">
+            <div class="text-xs text-th-muted mb-0.5">Attack</div>
+            <div class="text-2xl font-bold
+                {% if attack_result.crit == 1 %}text-yellow-400
+                {% elif attack_result.crit == 2 %}text-red-500
+                {% else %}text-th-text{% endif %}">
+                {{ attack_result.total }}
+            </div>
+            <div class="text-xs text-th-faint">{{ attack_result }}</div>
+        </div>
+        {# Damage roll #}
+        <div class="text-center">
+            <div class="text-xs text-th-muted mb-0.5">Damage</div>
+            <div class="text-2xl font-bold text-th-text">{{ damage_result.total }}</div>
+            <div class="text-xs text-th-faint">{{ damage_result }}</div>
+            {% if damage_type %}
+            <div class="text-xs text-th-accent mt-0.5">{{ damage_type }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% if attack_result.crit == 1 %}
+    <div class="text-center text-xs text-yellow-400 font-bold mt-1">CRITICAL HIT!</div>
+    {% elif attack_result.crit == 2 %}
+    <div class="text-center text-xs text-red-500 font-bold mt-1">CRITICAL MISS!</div>
+    {% endif %}
+</div>

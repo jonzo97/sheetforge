@@ -1,0 +1,10 @@
+<form method="POST" action="{{ url_for('characters.import_character') }}" enctype="multipart/form-data"
+      class="card p-4 shadow-sm flex items-center gap-4">
+    <label class="text-sm text-th-text font-medium">Import from JSON:</label>
+    <input type="file" name="file" accept=".json"
+           class="text-sm text-th-text file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-th-surface-alt file:text-th-text hover:file:bg-th-border file:transition-colors file:cursor-pointer">
+    <button type="submit"
+            class="bg-th-accent hover:bg-th-accent-h text-white text-sm px-4 py-1.5 rounded transition-colors">
+        Import
+    </button>
+</form>

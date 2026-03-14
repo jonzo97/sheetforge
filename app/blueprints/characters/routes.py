@@ -1,13 +1,24 @@
 import json
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app.blueprints.characters import characters_bp
 from app.extensions import db
-from app.models.character import Character
+from app.models.character import (
+    AbilityScores,
+    Character,
+    CharacterClass,
+    ClassFeature,
+    InventoryItem,
+    KnownSpell,
+    SavingThrowProficiency,
+    SkillProficiency,
+    SpellSlot,
+)
 from app.services import calculations as calc
 from app.services.character_creator import create_character
+from app.srd import get_all_weapons
 from app.srd import (
     ALL_SKILLS,
     SKILL_ABILITIES,
@@ -256,11 +267,19 @@ def sheet(character_id: int):
 
     # Initiative: DEX mod + any extra bonus (feats, features)
     dex_mod = calc.ability_modifier(scores.get("dex"))
-    initiative_mod = dex_mod + character.initiative_bonus
+    initiative_mod = dex_mod + (character.initiative_bonus or 0)
 
     # XP threshold for next level
-    from app.blueprints.characters.api import XP_THRESHOLDS
+    from app.blueprints.characters.api import XP_THRESHOLDS, _build_weapon_info
     xp_next = XP_THRESHOLDS.get(character.level + 1)
+
+    # Level-up notification
+    can_level_up = False
+    if character.level < 20 and xp_next is not None:
+        can_level_up = character.experience_points >= xp_next
+
+    # Weapon attack info for equipment display
+    weapon_info = _build_weapon_info(character)
 
     return render_template(
         "characters/sheet.html",
@@ -271,6 +290,9 @@ def sheet(character_id: int):
         spellcasting=spellcasting,
         initiative_mod=initiative_mod,
         xp_next=xp_next,
+        can_level_up=can_level_up,
+        weapon_info=weapon_info,
+        weapons=get_all_weapons(),
     )
 
 
@@ -295,3 +317,374 @@ def delete(character_id: int):
     db.session.commit()
     flash(f"{name} has been deleted.", "info")
     return redirect(url_for("characters.character_list"))
+
+
+# --- Export / Import ---
+
+
+SHEETFORGE_VERSION = "0.1.0"
+
+
+@characters_bp.route("/<int:character_id>/export")
+@login_required
+def export(character_id: int):
+    """Export a character as a JSON file download."""
+    character = db.session.get(Character, character_id)
+    if not character or character.user_id != current_user.id:
+        flash("Character not found.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    data = _serialize_character(character)
+    json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+
+    safe_name = "".join(
+        c if c.isalnum() or c in " _-" else "_" for c in character.name
+    ).strip()
+    filename = f"{safe_name}.json"
+
+    return Response(
+        json_bytes,
+        mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _serialize_character(c: Character) -> dict:
+    """Serialize a character and all related data for export.
+
+    Args:
+        c: The Character ORM object.
+
+    Returns:
+        A dict matching the Sheetforge export schema.
+    """
+    scores = c.ability_scores
+    return {
+        "sheetforge_version": SHEETFORGE_VERSION,
+        "character": {
+            "name": c.name,
+            "race": c.race,
+            "race_index": c.race_index or "",
+            "subrace": c.subrace or "",
+            "background": c.background,
+            "alignment": c.alignment or "",
+            "gender": c.gender or "",
+            "level": c.level,
+            "experience_points": c.experience_points or 0,
+            "max_hp": c.max_hp,
+            "armor_class": c.armor_class,
+            "initiative_bonus": c.initiative_bonus,
+            "speed": c.speed,
+            "proficiency_bonus": c.proficiency_bonus,
+            "hit_dice_total": c.hit_dice_total,
+            "hit_dice_remaining": c.hit_dice_total,  # reset to full
+            "personality_traits": c.personality_traits or "",
+            "ideals": c.ideals or "",
+            "bonds": c.bonds or "",
+            "flaws": c.flaws or "",
+            "backstory": c.backstory or "",
+            "notes": c.notes or "",
+            "portrait_url": c.portrait_url or "",
+        },
+        "ability_scores": scores.as_dict() if scores else {
+            "str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10,
+        },
+        "classes": [
+            {
+                "class_name": cls.class_name,
+                "class_index": cls.class_index or "",
+                "subclass": cls.subclass or "",
+                "level": cls.level,
+                "hit_die": cls.hit_die,
+            }
+            for cls in c.classes
+        ],
+        "skill_proficiencies": [
+            {"skill_name": sp.skill_name, "proficiency_type": sp.proficiency_type}
+            for sp in c.skill_proficiencies
+        ],
+        "saving_throws": [
+            {"ability": st.ability, "proficient": st.proficient}
+            for st in c.saving_throw_proficiencies
+        ],
+        "spell_slots": [
+            {"slot_level": ss.slot_level, "total": ss.total, "used": 0}
+            for ss in c.spell_slots
+        ],
+        "known_spells": [
+            {
+                "spell_name": ks.spell_name,
+                "spell_index": ks.spell_index or "",
+                "spell_level": ks.spell_level,
+                "prepared": ks.prepared,
+                "source": ks.source or "class",
+            }
+            for ks in c.known_spells
+        ],
+        "inventory": [
+            {
+                "name": item.name,
+                "quantity": item.quantity,
+                "weight": item.weight,
+                "equipped": item.equipped,
+                "attunement": item.attunement,
+                "description": item.description or "",
+                "weapon_index": item.weapon_index or "",
+                "magic_bonus": item.magic_bonus or 0,
+            }
+            for item in c.inventory
+        ],
+        "features": [
+            {
+                "feature_name": f.feature_name,
+                "description": f.description or "",
+                "source": f.source or "",
+                "uses_total": f.uses_total,
+                "uses_remaining": f.uses_total,  # reset to full
+                "recharge_on": f.recharge_on,
+            }
+            for f in c.features
+        ],
+    }
+
+
+@characters_bp.route("/import", methods=["POST"])
+@login_required
+def import_character():
+    """Import a character from a JSON file upload."""
+    file = request.files.get("file")
+    if not file or not file.filename:
+        flash("No file selected.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    try:
+        data = json.load(file)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        flash("Invalid JSON file.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    error = _validate_import(data)
+    if error:
+        flash(error, "error")
+        return redirect(url_for("characters.character_list"))
+
+    character = _create_from_import(data, current_user.id)
+    flash(f"{character.name} imported!", "success")
+    return redirect(url_for("characters.sheet", character_id=character.id))
+
+
+def _validate_import(data: dict) -> str | None:
+    """Validate import data structure. Returns error message or None.
+
+    Args:
+        data: The parsed JSON dict.
+
+    Returns:
+        An error string if validation fails, None if valid.
+    """
+    if not isinstance(data, dict):
+        return "Invalid file format."
+    if "sheetforge_version" not in data:
+        return "Not a Sheetforge export file (missing version)."
+    char = data.get("character")
+    if not isinstance(char, dict):
+        return "Missing character data."
+    if not char.get("name", "").strip():
+        return "Character name is required."
+    if not char.get("race", "").strip():
+        return "Character race is required."
+    level = char.get("level", 1)
+    if not isinstance(level, int) or level < 1:
+        return "Character level must be at least 1."
+    if not isinstance(data.get("ability_scores"), dict):
+        return "Missing ability scores."
+    classes = data.get("classes")
+    if not isinstance(classes, list) or len(classes) < 1:
+        return "At least one class is required."
+    return None
+
+
+def _clamp(value, lo, hi, default):
+    """Clamp a numeric value to a range with a fallback default.
+
+    Args:
+        value: The value to clamp (may be non-numeric).
+        lo: Minimum allowed value.
+        hi: Maximum allowed value.
+        default: Fallback if value is not a valid number.
+
+    Returns:
+        The clamped integer.
+    """
+    try:
+        return max(lo, min(hi, int(value)))
+    except (ValueError, TypeError):
+        return default
+
+
+def _create_from_import(data: dict, user_id: int) -> Character:
+    """Create a Character and all related objects from import data.
+
+    Args:
+        data: Validated Sheetforge export dict.
+        user_id: The ID of the importing user.
+
+    Returns:
+        The newly created Character object.
+    """
+    char = data["character"]
+    level = _clamp(char.get("level"), 1, 20, 1)
+    max_hp = _clamp(char.get("max_hp"), 1, 999, 10)
+    hit_dice_total = _clamp(char.get("hit_dice_total"), 1, 20, level)
+
+    character = Character(
+        user_id=user_id,
+        name=char["name"].strip()[:100],
+        race=char["race"].strip()[:50],
+        race_index=char.get("race_index", "")[:50] or None,
+        subrace=char.get("subrace", "")[:50] or None,
+        background=char.get("background", "Custom").strip()[:50] or "Custom",
+        alignment=char.get("alignment", "")[:50],
+        gender=char.get("gender", "")[:30],
+        level=level,
+        experience_points=_clamp(char.get("experience_points"), 0, 999999, 0),
+        max_hp=max_hp,
+        current_hp=max_hp,  # fresh import at full health
+        temp_hp=0,
+        hit_dice_total=hit_dice_total,
+        hit_dice_remaining=hit_dice_total,
+        death_save_successes=0,
+        death_save_failures=0,
+        inspiration=False,
+        armor_class=_clamp(char.get("armor_class"), 1, 30, 10),
+        initiative_bonus=_clamp(char.get("initiative_bonus"), -10, 20, 0),
+        speed=_clamp(char.get("speed"), 0, 120, 30),
+        proficiency_bonus=_clamp(char.get("proficiency_bonus"), 2, 6, 2),
+        personality_traits=char.get("personality_traits", ""),
+        ideals=char.get("ideals", ""),
+        bonds=char.get("bonds", ""),
+        flaws=char.get("flaws", ""),
+        backstory=char.get("backstory", ""),
+        notes=char.get("notes", ""),
+        portrait_url=char.get("portrait_url", "")[:500],
+    )
+    db.session.add(character)
+    db.session.flush()  # get character.id for foreign keys
+
+    # Ability Scores
+    scores_data = data.get("ability_scores", {})
+    ability_scores = AbilityScores(
+        character_id=character.id,
+        strength=_clamp(scores_data.get("str"), 1, 30, 10),
+        dexterity=_clamp(scores_data.get("dex"), 1, 30, 10),
+        constitution=_clamp(scores_data.get("con"), 1, 30, 10),
+        intelligence=_clamp(scores_data.get("int"), 1, 30, 10),
+        wisdom=_clamp(scores_data.get("wis"), 1, 30, 10),
+        charisma=_clamp(scores_data.get("cha"), 1, 30, 10),
+    )
+    db.session.add(ability_scores)
+
+    # Classes
+    for cls_data in data.get("classes", []):
+        if not cls_data.get("class_name"):
+            continue
+        db.session.add(CharacterClass(
+            character_id=character.id,
+            class_name=cls_data["class_name"][:50],
+            class_index=cls_data.get("class_index", "")[:50] or None,
+            subclass=cls_data.get("subclass", "")[:50] or None,
+            level=_clamp(cls_data.get("level"), 1, 20, 1),
+            hit_die=_clamp(cls_data.get("hit_die"), 4, 12, 8),
+        ))
+
+    # Skill Proficiencies
+    for sp_data in data.get("skill_proficiencies", []):
+        if not sp_data.get("skill_name"):
+            continue
+        prof_type = sp_data.get("proficiency_type", "proficient")
+        if prof_type not in ("none", "proficient", "expert"):
+            prof_type = "proficient"
+        db.session.add(SkillProficiency(
+            character_id=character.id,
+            skill_name=sp_data["skill_name"][:30],
+            proficiency_type=prof_type,
+        ))
+
+    # Saving Throws
+    valid_abilities = {"str", "dex", "con", "int", "wis", "cha"}
+    for st_data in data.get("saving_throws", []):
+        ability = st_data.get("ability", "").lower()
+        if ability not in valid_abilities:
+            continue
+        db.session.add(SavingThrowProficiency(
+            character_id=character.id,
+            ability=ability,
+            proficient=bool(st_data.get("proficient", False)),
+        ))
+
+    # Spell Slots
+    for ss_data in data.get("spell_slots", []):
+        slot_level = _clamp(ss_data.get("slot_level"), 1, 9, None)
+        if slot_level is None:
+            continue
+        db.session.add(SpellSlot(
+            character_id=character.id,
+            slot_level=slot_level,
+            total=_clamp(ss_data.get("total"), 0, 10, 0),
+            used=0,  # fresh import
+        ))
+
+    # Known Spells
+    for ks_data in data.get("known_spells", []):
+        if not ks_data.get("spell_name"):
+            continue
+        source = ks_data.get("source", "class")
+        if source not in ("class", "race", "feat"):
+            source = "class"
+        db.session.add(KnownSpell(
+            character_id=character.id,
+            spell_name=ks_data["spell_name"][:100],
+            spell_index=ks_data.get("spell_index", "")[:100] or None,
+            spell_level=_clamp(ks_data.get("spell_level"), 0, 9, 0),
+            prepared=bool(ks_data.get("prepared", True)),
+            source=source,
+        ))
+
+    # Inventory
+    for item_data in data.get("inventory", []):
+        if not item_data.get("name"):
+            continue
+        db.session.add(InventoryItem(
+            character_id=character.id,
+            name=item_data["name"][:100],
+            quantity=_clamp(item_data.get("quantity"), 0, 9999, 1),
+            weight=max(0.0, float(item_data.get("weight", 0.0) or 0.0)),
+            equipped=bool(item_data.get("equipped", False)),
+            attunement=bool(item_data.get("attunement", False)),
+            description=item_data.get("description", ""),
+            weapon_index=item_data.get("weapon_index", "")[:50] or None,
+            magic_bonus=max(0, min(3, int(item_data.get("magic_bonus", 0) or 0))),
+        ))
+
+    # Features
+    for f_data in data.get("features", []):
+        if not f_data.get("feature_name"):
+            continue
+        uses_total = f_data.get("uses_total")
+        if uses_total is not None:
+            uses_total = _clamp(uses_total, 0, 99, None)
+        recharge = f_data.get("recharge_on")
+        if recharge not in (None, "short_rest", "long_rest", "dawn"):
+            recharge = None
+        db.session.add(ClassFeature(
+            character_id=character.id,
+            feature_name=f_data["feature_name"][:100],
+            description=f_data.get("description", ""),
+            source=f_data.get("source", "")[:50],
+            uses_total=uses_total,
+            uses_remaining=uses_total,  # start fully charged
+            recharge_on=recharge,
+        ))
+
+    db.session.commit()
+    return character

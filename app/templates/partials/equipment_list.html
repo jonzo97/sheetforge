@@ -1,31 +1,46 @@
-{# Equipment list with add/remove — swapped via HTMX #}
+{# Equipment list with add/remove + weapon attacks — swapped via HTMX #}
 <div id="equipment-list">
     {% if character.inventory %}
     {% for item in character.inventory %}
     <div class="text-sm py-1 flex items-center justify-between group">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
             <button hx-post="{{ url_for('characters.toggle_equipment', character_id=character.id, item_id=item.id) }}"
                     hx-target="#equipment-list" hx-swap="outerHTML"
-                    class="w-4 h-4 rounded border border-th-faint flex items-center justify-center text-xs
+                    class="w-4 h-4 rounded border border-th-faint flex items-center justify-center text-xs shrink-0
                     {% if item.equipped %}bg-th-accent text-white border-th-accent{% else %}bg-transparent{% endif %}
                     hover:opacity-80 cursor-pointer transition-colors"
                     title="{% if item.equipped %}Equipped{% else %}Stowed{% endif %}">
                 {% if item.equipped %}&#10003;{% endif %}
             </button>
-            <span class="{% if not item.equipped %}text-th-faint{% else %}text-th-text{% endif %}">{{ item.name }}</span>
-            {% if item.quantity > 1 %}<span class="text-th-faint">x{{ item.quantity }}</span>{% endif %}
+            <span class="{% if not item.equipped %}text-th-faint{% else %}text-th-text{% endif %} truncate">{{ item.name }}</span>
+            {% if item.quantity > 1 %}<span class="text-th-faint shrink-0">x{{ item.quantity }}</span>{% endif %}
+            {% if weapon_info is defined and item.id in weapon_info %}
+            <span class="text-xs text-th-faint shrink-0">
+                {{ "+" if weapon_info[item.id].attack_bonus >= 0 }}{{ weapon_info[item.id].attack_bonus }} / {{ weapon_info[item.id].damage_str }} {{ weapon_info[item.id].damage_type }}
+            </span>
+            {% endif %}
         </div>
-        <button hx-post="{{ url_for('characters.remove_equipment', character_id=character.id, item_id=item.id) }}"
-                hx-target="#equipment-list" hx-swap="outerHTML"
-                class="text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 text-xs px-1 transition-opacity"
-                title="Remove">&#10005;</button>
+        <div class="flex items-center gap-1 shrink-0">
+            {% if weapon_info is defined and item.id in weapon_info %}
+            <button hx-post="{{ url_for('characters.attack', character_id=character.id, item_id=item.id) }}"
+                    hx-target="#roll-log" hx-swap="afterbegin"
+                    class="text-th-accent hover:text-th-accent-h text-xs px-1.5 py-0.5 rounded bg-th-surface-alt hover:bg-th-border transition-colors"
+                    title="Roll attack">
+                &#9876; Attack
+            </button>
+            {% endif %}
+            <button hx-post="{{ url_for('characters.remove_equipment', character_id=character.id, item_id=item.id) }}"
+                    hx-target="#equipment-list" hx-swap="outerHTML"
+                    class="text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 text-xs px-1 transition-opacity"
+                    title="Remove">&#10005;</button>
+        </div>
     </div>
     {% endfor %}
     {% else %}
     <p class="text-sm text-th-faint">No equipment.</p>
     {% endif %}
 
-    {# Add item form #}
+    {# Add custom item #}
     <div class="mt-2 flex flex-wrap gap-2">
         <input type="text" name="name" placeholder="Item name..."
                class="flex-1 text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent"
@@ -40,4 +55,29 @@
             Add
         </button>
     </div>
+
+    {# Add weapon from SRD #}
+    <details class="mt-2">
+        <summary class="text-xs text-th-accent hover:text-th-accent-h cursor-pointer">+ Add Weapon</summary>
+        <div class="mt-1 flex flex-wrap gap-2 items-end">
+            <select name="weapon_index" id="weapon-select-{{ character.id }}"
+                    class="flex-1 text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                <option value="">Select weapon...</option>
+                {% for w in weapons %}
+                <option value="{{ w.index }}">{{ w.name }}{% if w.damage %} ({{ w.damage.damage_dice }} {{ w.damage.damage_type.name|lower }}){% endif %}</option>
+                {% endfor %}
+            </select>
+            <div class="flex items-center gap-1">
+                <label class="text-xs text-th-faint">+</label>
+                <input type="number" name="magic_bonus" id="weapon-bonus-{{ character.id }}" value="0" min="0" max="3"
+                       class="w-10 text-sm text-center border border-th-input-border bg-th-input-bg text-th-text rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <button hx-post="{{ url_for('characters.add_weapon', character_id=character.id) }}"
+                    hx-target="#equipment-list" hx-swap="outerHTML"
+                    hx-include="#weapon-select-{{ character.id }}, #weapon-bonus-{{ character.id }}"
+                    class="bg-th-accent hover:bg-th-accent-h text-white text-sm px-3 py-1 rounded transition-colors">
+                Add
+            </button>
+        </div>
+    </details>
 </div>

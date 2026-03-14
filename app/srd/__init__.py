@@ -176,6 +176,64 @@ def get_equipment() -> dict[str, dict]:
     return _equipment
 
 
+def get_weapon(index: str) -> dict | None:
+    """Return SRD weapon data if the equipment entry is a weapon.
+
+    Args:
+        index: SRD equipment index (e.g. "longsword").
+
+    Returns:
+        The weapon dict, or None if not found or not a weapon.
+    """
+    item = _equipment.get(index)
+    if item and item.get("equipment_category", {}).get("index") == "weapon":
+        return item
+    return None
+
+
+def get_all_weapons() -> list[dict]:
+    """Return all SRD weapons that have damage data, sorted by name.
+
+    Returns:
+        List of weapon dicts from Equipment.json.
+    """
+    return sorted(
+        [
+            e for e in _equipment.values()
+            if e.get("equipment_category", {}).get("index") == "weapon"
+            and e.get("damage")  # exclude ammunition / weaponless entries
+        ],
+        key=lambda w: w["name"],
+    )
+
+
+def match_weapon_by_name(name: str) -> dict | None:
+    """Fuzzy match an inventory item name to an SRD weapon.
+
+    Tries exact match first, then checks if an SRD weapon name is
+    contained in the item name (e.g. "Longsword +1" contains "Longsword").
+
+    Args:
+        name: The inventory item name.
+
+    Returns:
+        The matching SRD weapon dict, or None.
+    """
+    normalized = name.lower().strip()
+    best_match = None
+    best_len = 0
+    for item in _equipment.values():
+        if item.get("equipment_category", {}).get("index") != "weapon":
+            continue
+        srd_name = item["name"].lower()
+        if srd_name == normalized:
+            return item
+        if srd_name in normalized and len(srd_name) > best_len:
+            best_match = item
+            best_len = len(srd_name)
+    return best_match
+
+
 def get_class_skill_choices(class_index: str) -> tuple[int, list[str]]:
     """Return (num_choices, list_of_skill_names) for a class's skill proficiency selection.
 

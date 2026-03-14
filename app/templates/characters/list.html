@@ -14,6 +14,10 @@
                 class="bg-th-surface-alt hover:bg-th-border text-th-text px-4 py-2 rounded-md text-sm border border-th-border transition-colors">
             Invite a Friend
         </button>
+        <button onclick="document.getElementById('import-form').classList.toggle('hidden')"
+                class="bg-th-surface-alt hover:bg-th-border text-th-text px-4 py-2 rounded-md text-sm border border-th-border transition-colors">
+            Import Character
+        </button>
         <a href="{{ url_for('characters.create') }}"
            class="bg-th-accent text-white px-4 py-2 rounded-md hover:bg-th-accent-h text-sm transition-colors">
             + New Character
@@ -21,6 +25,11 @@
     </div>
 </div>
 <div id="invite-result" class="mb-4"></div>
+
+{# Import form — hidden by default #}
+<div id="import-form" class="hidden mb-4">
+    {% include "partials/import_form.html" %}
+</div>
 
 {% if characters %}
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

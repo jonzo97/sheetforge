@@ -203,6 +203,8 @@ class InventoryItem(db.Model):
     equipped = db.Column(db.Boolean, default=False)
     attunement = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text, default="")
+    weapon_index = db.Column(db.String(50), nullable=True)  # SRD weapon key, e.g. "longsword"
+    magic_bonus = db.Column(db.Integer, default=0)  # +1, +2, +3 for magic weapons
 
 
 class ClassFeature(db.Model):

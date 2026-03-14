@@ -267,8 +267,12 @@
             {% include "partials/notes.html" %}
         </div>
 
-        {# Delete #}
-        <div class="pt-4">
+        {# Export / Delete #}
+        <div class="pt-4 flex items-center gap-4">
+            <a href="{{ url_for('characters.export', character_id=character.id) }}"
+               class="text-th-accent hover:text-th-accent-h text-sm transition-colors">
+                Export JSON
+            </a>
             <form method="POST" action="{{ url_for('characters.delete', character_id=character.id) }}"
                   onsubmit="return confirm('Are you sure you want to delete {{ character.name }}?')">
                 <button type="submit" class="text-red-500 hover:text-red-700 text-sm transition-colors">

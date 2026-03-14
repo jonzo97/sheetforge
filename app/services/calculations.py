@@ -199,6 +199,84 @@ _WARLOCK_SLOTS: list[dict[int, int]] = [
 FULL_CASTERS = {"bard", "cleric", "druid", "sorcerer", "wizard"}
 HALF_CASTERS = {"paladin", "ranger"}
 
+# Weapon proficiency by class — "simple" and "martial" are categories
+WEAPON_PROFICIENCIES: dict[str, set[str]] = {
+    "barbarian": {"simple", "martial"},
+    "bard":      {"simple", "hand-crossbow", "longsword", "rapier", "shortsword"},
+    "cleric":    {"simple"},
+    "druid":     {"club", "dagger", "dart", "javelin", "mace", "quarterstaff", "scimitar", "sickle", "sling", "spear"},
+    "fighter":   {"simple", "martial"},
+    "monk":      {"simple", "shortsword"},
+    "paladin":   {"simple", "martial"},
+    "ranger":    {"simple", "martial"},
+    "rogue":     {"simple", "hand-crossbow", "longsword", "rapier", "shortsword"},
+    "sorcerer":  {"simple"},
+    "warlock":   {"simple"},
+    "wizard":    {"simple"},
+}
+
+
+def is_proficient_with_weapon(class_index: str, weapon_data: dict) -> bool:
+    """Check if a class is proficient with a weapon.
+
+    Args:
+        class_index: SRD class index (e.g. "rogue").
+        weapon_data: SRD weapon dict (from Equipment.json).
+
+    Returns:
+        True if the class has proficiency with this weapon.
+    """
+    profs = WEAPON_PROFICIENCIES.get(class_index, set())
+    weapon_cat = weapon_data.get("weapon_category", "").lower()  # "Simple" or "Martial"
+    weapon_idx = weapon_data.get("index", "")
+    if weapon_cat in profs:
+        return True
+    return weapon_idx in profs
+
+
+def weapon_ability_score(weapon_data: dict, str_score: int, dex_score: int) -> tuple[int, str]:
+    """Determine which ability score to use for a weapon attack.
+
+    Melee uses STR, ranged uses DEX, finesse uses whichever is higher.
+
+    Args:
+        weapon_data: SRD weapon dict.
+        str_score: Character's Strength score.
+        dex_score: Character's Dexterity score.
+
+    Returns:
+        Tuple of (score_value, ability_name).
+    """
+    properties = [p["index"] for p in weapon_data.get("properties", [])]
+    weapon_range = weapon_data.get("weapon_range", "Melee")
+
+    if "finesse" in properties:
+        if dex_score >= str_score:
+            return dex_score, "DEX"
+        return str_score, "STR"
+    if weapon_range == "Ranged":
+        return dex_score, "DEX"
+    return str_score, "STR"
+
+
+def weapon_attack_bonus(ability_score: int, level: int, proficient: bool, magic_bonus: int = 0) -> int:
+    """Calculate weapon attack bonus.
+
+    Args:
+        ability_score: The relevant ability score (STR or DEX).
+        level: Character level (for proficiency bonus).
+        proficient: Whether the character is proficient with this weapon.
+        magic_bonus: Magic weapon bonus (+1, +2, +3).
+
+    Returns:
+        Total attack bonus.
+    """
+    bonus = ability_modifier(ability_score)
+    if proficient:
+        bonus += proficiency_bonus(level)
+    bonus += magic_bonus
+    return bonus
+
 
 def spell_slots_for_level(class_index: str, level: int) -> dict[int, int]:
     """Get spell slot counts for a class at a given level.

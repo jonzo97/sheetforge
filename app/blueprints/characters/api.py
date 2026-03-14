@@ -17,7 +17,12 @@ from app.models.character import (
 )
 from app.services import calculations as calc
 from app.services import dice as dice_service
-from app.srd import SKILL_ABILITIES
+from app.srd import (
+    SKILL_ABILITIES,
+    get_all_weapons,
+    get_weapon,
+    match_weapon_by_name,
+)
 
 
 def _get_owned_character(character_id: int) -> Character:
@@ -346,7 +351,12 @@ def add_equipment(character_id: int):
     character = _get_owned_character(character_id)
     name = request.form.get("name", "").strip()
     if not name:
-        return render_template("partials/equipment_list.html", character=character)
+        return render_template(
+            "partials/equipment_list.html",
+            character=character,
+            weapon_info=_build_weapon_info(character),
+            weapons=get_all_weapons(),
+        )
 
     try:
         quantity = int(request.form.get("quantity", 1))
@@ -360,7 +370,12 @@ def add_equipment(character_id: int):
     )
     db.session.add(item)
     db.session.commit()
-    return render_template("partials/equipment_list.html", character=character)
+    return render_template(
+        "partials/equipment_list.html",
+        character=character,
+        weapon_info=_build_weapon_info(character),
+        weapons=get_all_weapons(),
+    )
 
 
 @characters_bp.route("/<int:character_id>/equipment/<int:item_id>/remove", methods=["POST"])
@@ -380,7 +395,12 @@ def remove_equipment(character_id: int, item_id: int):
     if item and item.character_id == character_id:
         db.session.delete(item)
         db.session.commit()
-    return render_template("partials/equipment_list.html", character=character)
+    return render_template(
+        "partials/equipment_list.html",
+        character=character,
+        weapon_info=_build_weapon_info(character),
+        weapons=get_all_weapons(),
+    )
 
 
 @characters_bp.route("/<int:character_id>/equipment/<int:item_id>/toggle", methods=["POST"])
@@ -400,7 +420,191 @@ def toggle_equipment(character_id: int, item_id: int):
     if item and item.character_id == character_id:
         item.equipped = not item.equipped
         db.session.commit()
-    return render_template("partials/equipment_list.html", character=character)
+    return render_template(
+        "partials/equipment_list.html",
+        character=character,
+        weapon_info=_build_weapon_info(character),
+        weapons=get_all_weapons(),
+    )
+
+
+def _build_weapon_info(character: Character) -> dict[int, dict]:
+    """Compute attack/damage display data for all weapon-linked inventory items.
+
+    Auto-links items by name if weapon_index is not set (lazy migration).
+
+    Args:
+        character: The Character object.
+
+    Returns:
+        Dict keyed by InventoryItem.id with attack bonus, damage string, etc.
+    """
+    scores = character.ability_scores
+    str_score = scores.get("str") if scores else 10
+    dex_score = scores.get("dex") if scores else 10
+    cls = character.classes[0] if character.classes else None
+    class_index = cls.class_index if cls else ""
+
+    info = {}
+    dirty = False
+    for item in character.inventory:
+        # Auto-link by name if no weapon_index
+        if not item.weapon_index:
+            matched = match_weapon_by_name(item.name)
+            if matched:
+                item.weapon_index = matched["index"]
+                dirty = True
+            else:
+                continue
+
+        weapon_data = get_weapon(item.weapon_index)
+        if not weapon_data:
+            continue
+
+        score, ability_name = calc.weapon_ability_score(weapon_data, str_score, dex_score)
+        proficient = calc.is_proficient_with_weapon(class_index, weapon_data) if class_index else False
+        magic_bonus = item.magic_bonus or 0
+        attack_bonus = calc.weapon_attack_bonus(score, character.level, proficient, magic_bonus)
+        ability_mod = calc.ability_modifier(score)
+
+        # Build damage string
+        damage = weapon_data.get("damage", {})
+        damage_dice = damage.get("damage_dice", "1d4")
+        damage_type = damage.get("damage_type", {}).get("name", "")
+        damage_mod = ability_mod + magic_bonus
+        if damage_mod >= 0:
+            damage_str = f"{damage_dice}+{damage_mod}"
+        else:
+            damage_str = f"{damage_dice}{damage_mod}"
+
+        info[item.id] = {
+            "attack_bonus": attack_bonus,
+            "damage_dice": damage_dice,
+            "damage_mod": damage_mod,
+            "damage_str": damage_str,
+            "damage_type": damage_type.lower(),
+            "ability": ability_name,
+            "proficient": proficient,
+        }
+
+    if dirty:
+        db.session.commit()
+
+    return info
+
+
+@characters_bp.route("/<int:character_id>/attack/<int:item_id>", methods=["POST"])
+@login_required
+def attack(character_id: int, item_id: int):
+    """Roll a weapon attack + damage.
+
+    Args:
+        character_id: Character database ID.
+        item_id: Inventory item database ID.
+
+    Returns:
+        HTML fragment with attack and damage roll results.
+    """
+    character = _get_owned_character(character_id)
+    item = db.session.get(InventoryItem, item_id)
+    if not item or item.character_id != character_id or not item.weapon_index:
+        return render_template(
+            "partials/roll_result.html",
+            label="Attack",
+            expression="",
+            error="Weapon not found.",
+            result=None,
+        )
+
+    weapon_info = _build_weapon_info(character)
+    wi = weapon_info.get(item.id)
+    if not wi:
+        return render_template(
+            "partials/roll_result.html",
+            label="Attack",
+            expression="",
+            error="Weapon data not found.",
+            result=None,
+        )
+
+    # Roll attack
+    attack_bonus = wi["attack_bonus"]
+    sign = "+" if attack_bonus >= 0 else ""
+    attack_expr = f"1d20{sign}{attack_bonus}"
+    attack_result = dice_service.roll(attack_expr)
+
+    # Roll damage
+    damage_mod = wi["damage_mod"]
+    if damage_mod >= 0:
+        damage_expr = f"{wi['damage_dice']}+{damage_mod}"
+    elif damage_mod < 0:
+        damage_expr = f"{wi['damage_dice']}{damage_mod}"
+    else:
+        damage_expr = wi["damage_dice"]
+    damage_result = dice_service.roll(damage_expr)
+
+    weapon_name = item.name
+
+    return render_template(
+        "partials/attack_result.html",
+        weapon_name=weapon_name,
+        attack_expr=attack_expr,
+        attack_result=attack_result,
+        damage_expr=damage_expr,
+        damage_result=damage_result,
+        damage_type=wi["damage_type"],
+    )
+
+
+@characters_bp.route("/<int:character_id>/equipment/add-weapon", methods=["POST"])
+@login_required
+def add_weapon(character_id: int):
+    """Add a weapon from the SRD weapon list.
+
+    Args:
+        character_id: Character database ID.
+
+    Returns:
+        Re-rendered equipment list partial.
+    """
+    character = _get_owned_character(character_id)
+    weapon_index = request.form.get("weapon_index", "").strip()
+    weapon_data = get_weapon(weapon_index)
+    if not weapon_data:
+        return render_template(
+            "partials/equipment_list.html",
+            character=character,
+            weapon_info=_build_weapon_info(character),
+            weapons=get_all_weapons(),
+        )
+
+    try:
+        magic_bonus = int(request.form.get("magic_bonus", 0))
+        magic_bonus = max(0, min(3, magic_bonus))
+    except (ValueError, TypeError):
+        magic_bonus = 0
+
+    name = weapon_data["name"]
+    if magic_bonus > 0:
+        name = f"{name} +{magic_bonus}"
+
+    item = InventoryItem(
+        character_id=character_id,
+        name=name,
+        quantity=1,
+        weight=weapon_data.get("weight", 0),
+        weapon_index=weapon_index,
+        magic_bonus=magic_bonus,
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    return render_template(
+        "partials/equipment_list.html",
+        character=character,
+        weapon_info=_build_weapon_info(character),
+        weapons=get_all_weapons(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -626,7 +830,16 @@ def update_xp(character_id: int):
     db.session.commit()
 
     xp_next = XP_THRESHOLDS.get(character.level + 1)
-    return render_template("partials/xp_tracker.html", character=character, xp_next=xp_next)
+    can_level_up = False
+    if character.level < 20 and xp_next is not None:
+        can_level_up = character.experience_points >= xp_next
+
+    return render_template(
+        "partials/xp_tracker.html",
+        character=character,
+        xp_next=xp_next,
+        can_level_up=can_level_up,
+    )
 
 
 # ---------------------------------------------------------------------------
