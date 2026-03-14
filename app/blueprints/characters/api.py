@@ -122,9 +122,10 @@ def roll_initiative(character_id: int):
     """
     character = _get_owned_character(character_id)
     dex_mod = calc.ability_modifier(character.ability_scores.get("dex"))
+    total_init = dex_mod + character.initiative_bonus
 
-    sign = "+" if dex_mod >= 0 else ""
-    expression = f"1d20{sign}{dex_mod}"
+    sign = "+" if total_init >= 0 else ""
+    expression = f"1d20{sign}{total_init}"
     result = dice_service.roll(expression)
 
     return render_template(
@@ -585,3 +586,89 @@ def use_feature(character_id: int, feature_id: int):
         db.session.commit()
 
     return render_template("partials/feature_uses.html", character=character)
+
+
+# ---------------------------------------------------------------------------
+# XP Tracking
+# ---------------------------------------------------------------------------
+
+# 5e XP thresholds for levels 1-20
+XP_THRESHOLDS = {
+    1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000, 8: 34000,
+    9: 48000, 10: 64000, 11: 85000, 12: 100000, 13: 120000, 14: 140000,
+    15: 165000, 16: 195000, 17: 225000, 18: 265000, 19: 305000, 20: 355000,
+}
+
+
+@characters_bp.route("/<int:character_id>/xp", methods=["POST"])
+@login_required
+def update_xp(character_id: int):
+    """Add to or set character XP.
+
+    Args:
+        character_id: Character database ID.
+
+    Returns:
+        Re-rendered XP tracker partial.
+    """
+    character = _get_owned_character(character_id)
+    action = request.form.get("action", "add")
+    try:
+        amount = int(request.form.get("amount", 0))
+    except (ValueError, TypeError):
+        amount = 0
+
+    if action == "add":
+        character.experience_points = max(0, character.experience_points + amount)
+    elif action == "set":
+        character.experience_points = max(0, amount)
+
+    db.session.commit()
+
+    xp_next = XP_THRESHOLDS.get(character.level + 1)
+    return render_template("partials/xp_tracker.html", character=character, xp_next=xp_next)
+
+
+# ---------------------------------------------------------------------------
+# Backstory
+# ---------------------------------------------------------------------------
+
+@characters_bp.route("/<int:character_id>/backstory", methods=["POST"])
+@login_required
+def update_backstory(character_id: int):
+    """Save character backstory.
+
+    Args:
+        character_id: Character database ID.
+
+    Returns:
+        Re-rendered backstory partial.
+    """
+    character = _get_owned_character(character_id)
+    character.backstory = request.form.get("backstory", "")
+    db.session.commit()
+    return render_template("partials/backstory.html", character=character)
+
+
+# ---------------------------------------------------------------------------
+# Portrait
+# ---------------------------------------------------------------------------
+
+@characters_bp.route("/<int:character_id>/portrait", methods=["POST"])
+@login_required
+def update_portrait(character_id: int):
+    """Set character portrait URL.
+
+    Args:
+        character_id: Character database ID.
+
+    Returns:
+        Re-rendered portrait section via OOB or redirect.
+    """
+    character = _get_owned_character(character_id)
+    url = request.form.get("portrait_url", "").strip()
+    if url and not url.startswith(("https://", "http://")):
+        url = ""
+    character.portrait_url = url
+    db.session.commit()
+    return render_template("partials/portrait.html", character=character)

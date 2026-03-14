@@ -21,19 +21,26 @@
 {# ===== HEADER ===== #}
 <div class="card p-6 mb-4 shadow-sm">
     <div class="flex items-start justify-between">
-        <div>
-            <h1 class="text-3xl font-brand font-bold text-th-text">{{ character.name }}</h1>
-            <p class="text-th-muted mt-1">
-                Level {{ character.level }}
-                {% for cls in character.classes %}
-                    {{ cls.class_name }}{% if cls.subclass %} ({{ cls.subclass }}){% endif %}{% if not loop.last %} / {% endif %}
-                {% endfor %}
-                &middot; {{ character.race }}
-                {% if character.background %}&middot; {{ character.background }}{% endif %}
-            </p>
-            {% if character.alignment %}
-            <p class="text-sm text-th-faint">{{ character.alignment }}</p>
-            {% endif %}
+        <div class="flex items-start gap-4">
+            {# Portrait #}
+            {% include "partials/portrait.html" %}
+            <div>
+                <h1 class="text-3xl font-brand font-bold text-th-text">{{ character.name }}</h1>
+                <p class="text-th-muted mt-1">
+                    Level {{ character.level }}
+                    {% for cls in character.classes %}
+                        {{ cls.class_name }}{% if cls.subclass %} ({{ cls.subclass }}){% endif %}{% if not loop.last %} / {% endif %}
+                    {% endfor %}
+                    &middot; {{ character.race }}
+                    {% if character.gender %}&middot; {{ character.gender }}{% endif %}
+                    {% if character.background %}&middot; {{ character.background }}{% endif %}
+                </p>
+                {% if character.alignment %}
+                <p class="text-sm text-th-faint">{{ character.alignment }}</p>
+                {% endif %}
+                {# XP Tracker #}
+                {% include "partials/xp_tracker.html" %}
+            </div>
         </div>
         <div class="flex items-center gap-4">
             {# Inspiration toggle #}
@@ -112,7 +119,7 @@
                         hx-target="#roll-log" hx-swap="afterbegin"
                         class="stat-box hover:border-th-accent cursor-pointer transition-colors">
                     <div class="text-xs font-bold text-th-heading">Initiative</div>
-                    <div class="stat-mod">{{ "+" if abilities[1].modifier >= 0 }}{{ abilities[1].modifier }}</div>
+                    <div class="stat-mod">{{ "+" if initiative_mod >= 0 }}{{ initiative_mod }}</div>
                     <div class="text-xs text-th-accent">click to roll</div>
                 </button>
                 <div class="stat-box">
@@ -249,6 +256,11 @@
             {% endif %}
         </div>
         {% endif %}
+
+        {# Backstory — collapsible #}
+        <div class="card p-4 shadow-sm">
+            {% include "partials/backstory.html" %}
+        </div>
 
         {# Notes — HTMX interactive #}
         <div class="card p-4 shadow-sm">

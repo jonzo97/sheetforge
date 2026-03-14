@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
@@ -22,6 +23,8 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             next_page = request.args.get("next")
+            if next_page and urlparse(next_page).netloc:
+                next_page = None
             return redirect(next_page or url_for("characters.character_list"))
 
         flash("Invalid username or password.", "error")
@@ -81,6 +84,9 @@ def register_with_token(token: str):
         return redirect(url_for("auth.login"))
     if invite.used_by is not None:
         flash("This invite has already been used.", "error")
+        return redirect(url_for("auth.login"))
+    if invite.expires_at and datetime.now(timezone.utc) > invite.expires_at:
+        flash("This invite has expired.", "error")
         return redirect(url_for("auth.login"))
 
     if request.method == "POST":

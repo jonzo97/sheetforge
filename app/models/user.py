@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -41,6 +42,7 @@ class InviteToken(db.Model):
     used_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     used_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc) + timedelta(days=7))
 
     creator = db.relationship("User", foreign_keys=[created_by])
     redeemer = db.relationship("User", foreign_keys=[used_by])

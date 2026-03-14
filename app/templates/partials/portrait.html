@@ -1,0 +1,34 @@
+{# Character portrait — circular image with edit capability #}
+<div id="character-portrait" x-data="{ editing: false }">
+    {% if character.portrait_url %}
+    <div class="relative group">
+        <img src="{{ character.portrait_url }}" alt="{{ character.name }}"
+             class="w-20 h-20 rounded-full object-cover border-2 border-th-stat-border shadow-sm">
+        <button @click="editing = !editing"
+                class="absolute inset-0 w-20 h-20 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity">
+            Change
+        </button>
+    </div>
+    {% else %}
+    <button @click="editing = !editing"
+            class="w-20 h-20 rounded-full border-2 border-dashed border-th-border flex items-center justify-center text-th-faint hover:border-th-accent hover:text-th-accent transition-colors">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/>
+        </svg>
+    </button>
+    {% endif %}
+    <div x-show="editing" x-transition class="mt-2">
+        <div class="flex items-center gap-2">
+            <input type="url" name="portrait_url" placeholder="Image URL..."
+                   value="{{ character.portrait_url or '' }}"
+                   class="flex-1 text-xs border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent"
+                   id="portrait-url-{{ character.id }}">
+            <button hx-post="{{ url_for('characters.update_portrait', character_id=character.id) }}"
+                    hx-target="#character-portrait" hx-swap="outerHTML"
+                    hx-include="#portrait-url-{{ character.id }}"
+                    class="text-xs bg-th-accent hover:bg-th-accent-h text-white rounded px-2 py-1 transition-colors">
+                Save
+            </button>
+        </div>
+    </div>
+</div>

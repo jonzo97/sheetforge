@@ -1,0 +1,28 @@
+{# Backstory section — collapsible, HTMX-powered save #}
+<div id="backstory-section" x-data="{ editing: false }">
+    <h2 class="section-heading flex items-center justify-between">
+        Backstory
+        <button @click="editing = !editing"
+                class="text-xs font-normal text-th-accent hover:text-th-accent-h transition-colors"
+                x-text="editing ? 'Cancel' : 'Edit'"></button>
+    </h2>
+    <div x-show="!editing">
+        {% if character.backstory %}
+        <div class="text-sm text-th-text whitespace-pre-line">{{ character.backstory }}</div>
+        {% else %}
+        <p class="text-sm text-th-faint">No backstory yet.</p>
+        {% endif %}
+    </div>
+    <div x-show="editing" x-transition>
+        <textarea name="backstory" rows="6"
+                  class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent resize-y"
+                  id="backstory-text-{{ character.id }}">{{ character.backstory or '' }}</textarea>
+        <button hx-post="{{ url_for('characters.update_backstory', character_id=character.id) }}"
+                hx-target="#backstory-section" hx-swap="outerHTML"
+                hx-include="#backstory-text-{{ character.id }}"
+                class="mt-1 bg-th-accent hover:bg-th-accent-h text-white text-sm px-3 py-1 rounded transition-colors"
+                @click="editing = false">
+            Save
+        </button>
+    </div>
+</div>

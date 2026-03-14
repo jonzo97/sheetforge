@@ -50,6 +50,7 @@ def create_character(
     ideals: str = "",
     bonds: str = "",
     flaws: str = "",
+    gender: str = "",
 ) -> Character:
     """Create a fully populated character at the specified level.
 
@@ -114,6 +115,7 @@ def create_character(
         race_index=race_index,
         background=background,
         alignment=alignment,
+        gender=gender,
         level=level,
         max_hp=max_hp,
         current_hp=max_hp,

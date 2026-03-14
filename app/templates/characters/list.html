@@ -5,6 +5,10 @@
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-brand font-bold text-th-text">My Characters</h1>
     <div class="flex items-center gap-2">
+        <a href="{{ url_for('characters.schedule') }}"
+           class="bg-th-surface-alt hover:bg-th-border text-th-text px-4 py-2 rounded-md text-sm border border-th-border transition-colors">
+            Schedule
+        </a>
         <button hx-post="{{ url_for('auth.create_invite') }}"
                 hx-target="#invite-result" hx-swap="innerHTML"
                 class="bg-th-surface-alt hover:bg-th-border text-th-text px-4 py-2 rounded-md text-sm border border-th-border transition-colors">

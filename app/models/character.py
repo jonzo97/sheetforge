@@ -14,6 +14,7 @@ class Character(db.Model):
     subrace = db.Column(db.String(50))
     background = db.Column(db.String(50), nullable=False)
     alignment = db.Column(db.String(50), default="")
+    gender = db.Column(db.String(30), default="")
     experience_points = db.Column(db.Integer, default=0)
     level = db.Column(db.Integer, default=1)
 
@@ -29,6 +30,7 @@ class Character(db.Model):
 
     # Derived / stored combat stats
     armor_class = db.Column(db.Integer, default=10)
+    initiative_bonus = db.Column(db.Integer, default=0)  # Extra initiative beyond DEX mod (feats, features)
     speed = db.Column(db.Integer, default=30)
     proficiency_bonus = db.Column(db.Integer, default=2)
 
@@ -37,7 +39,9 @@ class Character(db.Model):
     ideals = db.Column(db.Text, default="")
     bonds = db.Column(db.Text, default="")
     flaws = db.Column(db.Text, default="")
+    backstory = db.Column(db.Text, default="")
     notes = db.Column(db.Text, default="")
+    portrait_url = db.Column(db.String(500), default="")
 
     # Relationships
     ability_scores = db.relationship(

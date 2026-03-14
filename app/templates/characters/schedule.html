@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Session Schedule{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-brand font-bold text-th-text">Session Schedule</h1>
+        <a href="{{ url_for('characters.character_list') }}" class="text-sm text-th-faint hover:text-th-text transition-colors">&larr; Characters</a>
+    </div>
+
+    <div class="card p-6 shadow-sm mb-4" x-data="timezoneCalc()">
+        <h2 class="section-heading">Pick a Session Time</h2>
+
+        <div class="flex flex-wrap items-end gap-3 mb-6">
+            <div>
+                <label class="block text-xs text-th-muted mb-1">Date</label>
+                <input type="date" x-model="date"
+                       class="px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label class="block text-xs text-th-muted mb-1">Time</label>
+                <input type="time" x-model="time"
+                       class="px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label class="block text-xs text-th-muted mb-1">In timezone of</label>
+                <select x-model="sourceTz" x-ref="tzSelect"
+                        x-effect="
+                            let sel = $refs.tzSelect;
+                            if (!sel) return;
+                            let val = sourceTz;
+                            sel.innerHTML = '';
+                            uniqueTzs.forEach(tz => {
+                                let opt = document.createElement('option');
+                                opt.value = tz.tz;
+                                opt.textContent = tz.label;
+                                if (tz.tz === val) opt.selected = true;
+                                sel.appendChild(opt);
+                            });
+                        "
+                        class="px-3 py-2 border border-th-input-border bg-th-input-bg text-th-text rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-th-accent">
+                </select>
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <template x-for="(m, idx) in members" :key="idx">
+                <div class="flex items-center justify-between p-3 rounded-md"
+                     :class="m.tz === sourceTz ? 'bg-th-accent/10 border border-th-accent/30' : 'bg-th-surface-alt'">
+                    <div>
+                        <div class="font-medium text-sm text-th-text" x-text="m.name"></div>
+                        <div class="text-xs text-th-faint" x-text="m.label"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono font-bold text-th-text" x-text="convertTime(m.tz)"></div>
+                        <div class="text-xs text-th-faint" x-text="convertDate(m.tz)"></div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {# Quick presets #}
+        <div class="mt-4 pt-4 border-t border-th-border">
+            <div class="text-xs text-th-muted mb-2">Quick presets:</div>
+            <div class="flex flex-wrap gap-2">
+                <button @click="date='2026-03-15'; time='14:00'; sourceTz='Europe/London'"
+                        class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-3 py-1 border border-th-border transition-colors">
+                    Session 1: Sun Mar 15, 2pm UK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {# Party members config #}
+    <div class="card p-6 shadow-sm" x-data="{ editing: false }">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="section-heading mb-0 border-0 pb-0">Party Members</h2>
+            <button @click="editing = !editing"
+                    class="text-xs text-th-accent hover:text-th-accent-h transition-colors"
+                    x-text="editing ? 'Done' : 'Edit'"></button>
+        </div>
+        <p class="text-xs text-th-faint mb-3">Timezone data is stored in your browser.</p>
+
+        <div x-show="!editing" class="text-sm text-th-text space-y-1">
+            <template x-for="(m, idx) in members" :key="'list-'+idx">
+                <div><span x-text="m.name"></span> — <span class="text-th-faint" x-text="m.label"></span></div>
+            </template>
+        </div>
+
+        <div x-show="editing" x-transition class="space-y-2">
+            <template x-for="(m, idx) in members" :key="'edit-'+idx">
+                <div class="flex items-center gap-2">
+                    <input type="text" x-model="m.name" placeholder="Name"
+                           class="flex-1 text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                    <select x-model="m.tz" @change="m.label = $el.options[$el.selectedIndex].text"
+                            class="text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                        <option value="America/New_York">US Eastern</option>
+                        <option value="America/Chicago">US Central</option>
+                        <option value="America/Denver">US Mountain</option>
+                        <option value="America/Los_Angeles">US Pacific</option>
+                        <option value="Europe/London">UK (GMT/BST)</option>
+                        <option value="Europe/Paris">Central Europe</option>
+                        <option value="Asia/Tokyo">Japan</option>
+                        <option value="Australia/Sydney">Australian Eastern</option>
+                        <option value="Pacific/Auckland">New Zealand</option>
+                    </select>
+                    <button @click="members.splice(idx, 1); saveMembers()"
+                            class="text-red-400 hover:text-red-500 text-xs px-1">&#10005;</button>
+                </div>
+            </template>
+            <div class="flex gap-2 mt-2">
+                <button @click="members.push({name: 'New Player', label: 'US Eastern', tz: 'America/New_York'}); saveMembers()"
+                        class="text-xs bg-th-accent hover:bg-th-accent-h text-white rounded px-3 py-1 transition-colors">
+                    + Add Player
+                </button>
+                <button @click="saveMembers()"
+                        class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-3 py-1 border border-th-border transition-colors">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function timezoneCalc() {
+    const defaultMembers = [
+        { name: 'Player 1', label: 'US Eastern', tz: 'America/New_York' },
+        { name: 'Player 2', label: 'US Pacific', tz: 'America/Los_Angeles' },
+        { name: 'Player 3', label: 'UK (GMT/BST)', tz: 'Europe/London' },
+    ];
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('sf-schedule-members')); } catch(e) {}
+
+    return {
+        date: '',
+        time: '14:00',
+        sourceTz: 'Europe/London',
+        members: saved || defaultMembers,
+        getSourceDate() {
+            if (!this.date || !this.time) return null;
+            // Use Intl to find the UTC offset for the source timezone at the given date/time
+            // by comparing formatted output to a known UTC reference
+            const dtStr = this.date + 'T' + this.time + ':00';
+
+            // Strategy: binary-search-free approach using Intl
+            // Format a known UTC epoch in the source tz to find its offset
+            const probe = new Date(dtStr + 'Z'); // treat input as UTC temporarily
+            const utcParts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).formatToParts(probe);
+            const srcParts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: this.sourceTz, year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).formatToParts(probe);
+
+            const toDate = (parts) => {
+                const g = (type) => parts.find(p => p.type === type)?.value || '0';
+                return new Date(`${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}:${g('second')}Z`);
+            };
+
+            // Offset = how far ahead source tz is from UTC
+            const offsetMs = toDate(srcParts).getTime() - toDate(utcParts).getTime();
+
+            // The user wants dtStr to be in sourceTz, so UTC = dtStr - offset
+            return new Date(probe.getTime() - offsetMs);
+        },
+        convertTime(tz) {
+            const utc = this.getSourceDate();
+            if (!utc) return '--:--';
+            return utc.toLocaleTimeString('en-US', {
+                timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true
+            });
+        },
+        convertDate(tz) {
+            const utc = this.getSourceDate();
+            if (!utc) return '';
+            return utc.toLocaleDateString('en-US', {
+                timeZone: tz, weekday: 'short', month: 'short', day: 'numeric'
+            });
+        },
+        saveMembers() {
+            localStorage.setItem('sf-schedule-members', JSON.stringify(this.members));
+        },
+        get uniqueTzs() {
+            const seen = new Set();
+            const result = [];
+            for (const m of this.members) {
+                if (!seen.has(m.tz)) {
+                    seen.add(m.tz);
+                    const names = this.members.filter(x => x.tz === m.tz).map(x => x.name).join(' / ');
+                    result.push({ tz: m.tz, label: names + ' (' + m.label + ')' });
+                }
+            }
+            return result;
+        }
+    }
+}
+</script>
+{% endblock %}

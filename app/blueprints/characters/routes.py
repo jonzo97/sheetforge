@@ -182,6 +182,7 @@ def _handle_create(form):
         ideals=ideals,
         bonds=bonds,
         flaws=flaws,
+        gender=request.form.get("gender", "").strip(),
     )
 
     flash(f"{character.name} created!", "success")
@@ -253,6 +254,14 @@ def sheet(character_id: int):
             "slots": sorted(character.spell_slots, key=lambda s: s.slot_level),
         }
 
+    # Initiative: DEX mod + any extra bonus (feats, features)
+    dex_mod = calc.ability_modifier(scores.get("dex"))
+    initiative_mod = dex_mod + character.initiative_bonus
+
+    # XP threshold for next level
+    from app.blueprints.characters.api import XP_THRESHOLDS
+    xp_next = XP_THRESHOLDS.get(character.level + 1)
+
     return render_template(
         "characters/sheet.html",
         character=character,
@@ -260,7 +269,16 @@ def sheet(character_id: int):
         skills=skills_display,
         saves=saves_display,
         spellcasting=spellcasting,
+        initiative_mod=initiative_mod,
+        xp_next=xp_next,
     )
+
+
+@characters_bp.route("/schedule")
+@login_required
+def schedule():
+    """Party timezone calculator."""
+    return render_template("characters/schedule.html")
 
 
 @characters_bp.route("/<int:character_id>/delete", methods=["POST"])

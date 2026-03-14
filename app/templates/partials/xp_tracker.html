@@ -1,0 +1,33 @@
+{# XP tracker with add/set controls — swapped via HTMX #}
+<div id="xp-tracker" class="mt-1">
+    <div class="flex items-center gap-2 text-sm">
+        <span class="text-th-faint">XP:</span>
+        <span class="font-medium text-th-text">{{ character.experience_points | default(0) }}</span>
+        {% if xp_next %}
+        <span class="text-xs text-th-faint">/ {{ xp_next }} (Level {{ character.level + 1 }})</span>
+        {% endif %}
+        <button x-data @click="$refs.xpForm{{ character.id }}.classList.toggle('hidden')"
+                class="text-xs text-th-accent hover:text-th-accent-h transition-colors">
+            edit
+        </button>
+    </div>
+    <div x-ref="xpForm{{ character.id }}" class="hidden mt-1 flex items-center gap-2">
+        <input type="number" name="amount" value="0" min="0"
+               class="w-20 text-center text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent"
+               id="xp-amount-{{ character.id }}">
+        <button hx-post="{{ url_for('characters.update_xp', character_id=character.id) }}"
+                hx-target="#xp-tracker" hx-swap="outerHTML"
+                hx-include="#xp-amount-{{ character.id }}"
+                hx-vals='{"action": "add"}'
+                class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-2 py-1 transition-colors">
+            +Add
+        </button>
+        <button hx-post="{{ url_for('characters.update_xp', character_id=character.id) }}"
+                hx-target="#xp-tracker" hx-swap="outerHTML"
+                hx-include="#xp-amount-{{ character.id }}"
+                hx-vals='{"action": "set"}'
+                class="text-xs bg-th-surface-alt hover:bg-th-border text-th-text rounded px-2 py-1 transition-colors">
+            Set
+        </button>
+    </div>
+</div>
