@@ -269,6 +269,10 @@
 
         {# Export / Delete #}
         <div class="pt-4 flex items-center gap-4">
+            <a href="{{ url_for('characters.edit', character_id=character.id) }}"
+               class="text-th-accent hover:text-th-accent-h text-sm transition-colors">
+                Edit
+            </a>
             <a href="{{ url_for('characters.export', character_id=character.id) }}"
                class="text-th-accent hover:text-th-accent-h text-sm transition-colors">
                 Export JSON

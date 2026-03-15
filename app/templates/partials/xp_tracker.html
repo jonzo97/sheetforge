@@ -2,7 +2,7 @@
 <div id="xp-tracker" class="mt-1">
     {% if can_level_up is defined and can_level_up %}
     <div class="bg-yellow-500/10 border border-yellow-500/30 rounded px-3 py-1.5 mb-1 flex items-center gap-2">
-        <span class="text-yellow-400 text-sm font-bold">&#11088; Level Up Available!</span>
+        <a href="{{ url_for('characters.level_up', character_id=character.id) }}" class="text-yellow-400 text-sm font-bold hover:text-yellow-300 transition-colors">&#11088; Level Up Available!</a>
         <span class="text-xs text-th-muted">You have enough XP for Level {{ character.level + 1 }}</span>
     </div>
     {% endif %}

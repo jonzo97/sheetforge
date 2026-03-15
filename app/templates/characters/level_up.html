@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Level Up {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('characters.sheet', character_id=character.id) }}" class="text-sm text-th-faint hover:text-th-text transition-colors">&larr; Back to Character Sheet</a>
+</div>
+
+<h1 class="text-2xl font-brand font-bold text-th-text mb-2">Level Up {{ character.name }}</h1>
+<p class="text-th-muted mb-4">Level {{ character.level }} &rarr; Level {{ new_level }}</p>
+
+<form method="POST" action="{{ url_for('characters.level_up_post', character_id=character.id) }}">
+
+    {# HP Section #}
+    <div class="card p-4 mb-4 shadow-sm">
+        <h2 class="section-heading">Hit Points</h2>
+        <p class="text-sm text-th-muted mb-2">Hit Die: d{{ hit_die }} | CON modifier: {{ "+" if con_mod >= 0 }}{{ con_mod }}</p>
+
+        <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2 text-sm text-th-text cursor-pointer">
+                <input type="radio" name="hp_choice" value="average" checked class="accent-th-accent">
+                Take Average: +{{ avg_hp }} HP ({{ character.max_hp }} &rarr; {{ character.max_hp + avg_hp }})
+            </label>
+            <div class="flex items-center gap-2">
+                <label class="flex items-center gap-2 text-sm text-th-text cursor-pointer">
+                    <input type="radio" name="hp_choice" value="roll" id="hp-roll-radio" class="accent-th-accent">
+                    Roll:
+                </label>
+                <button type="button" onclick="rollHitDie({{ hit_die }})"
+                        class="bg-th-surface-alt hover:bg-th-border text-th-text text-sm px-3 py-1 rounded transition-colors">
+                    Roll 1d{{ hit_die }}
+                </button>
+                <span id="hp-roll-result" class="text-sm font-mono text-th-text"></span>
+                <input type="hidden" name="hp_roll_value" id="hp-roll-value" value="0">
+            </div>
+        </div>
+    </div>
+
+    {# Proficiency Bonus Change (if applicable) #}
+    {% if prof_changed %}
+    <div class="card p-4 mb-4 shadow-sm">
+        <h2 class="section-heading">Proficiency Bonus</h2>
+        <p class="text-sm text-th-text">Proficiency bonus increases from +{{ old_prof }} to +{{ new_prof }}</p>
+    </div>
+    {% endif %}
+
+    {# ASI Section (if applicable) #}
+    {% if is_asi_level %}
+    <div class="card p-4 mb-4 shadow-sm">
+        <h2 class="section-heading">Ability Score Improvement</h2>
+        <p class="text-sm text-th-muted mb-3">Choose one option:</p>
+
+        <div class="flex flex-col gap-3">
+            {# Option 1: +2 to one ability #}
+            <label class="flex items-center gap-2 text-sm text-th-text cursor-pointer">
+                <input type="radio" name="asi_mode" value="plus2" checked class="accent-th-accent"
+                       onchange="document.getElementById('asi-plus2').classList.remove('hidden'); document.getElementById('asi-plus1').classList.add('hidden');">
+                +2 to one ability score
+            </label>
+            <div id="asi-plus2" class="ml-6">
+                <select name="asi_ability_1" class="text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1">
+                    {% for ab, score in scores.items() %}
+                    <option value="{{ ab }}">{{ ab|upper }} ({{ score }} &rarr; {{ [score + 2, 20]|min }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {# Option 2: +1 to two abilities #}
+            <label class="flex items-center gap-2 text-sm text-th-text cursor-pointer">
+                <input type="radio" name="asi_mode" value="plus1plus1" class="accent-th-accent"
+                       onchange="document.getElementById('asi-plus1').classList.remove('hidden'); document.getElementById('asi-plus2').classList.add('hidden');">
+                +1 to two ability scores
+            </label>
+            <div id="asi-plus1" class="ml-6 hidden flex gap-2">
+                <select name="asi_ability_1_a" class="text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1">
+                    {% for ab, score in scores.items() %}
+                    <option value="{{ ab }}">{{ ab|upper }} ({{ score }} &rarr; {{ [score + 1, 20]|min }})</option>
+                    {% endfor %}
+                </select>
+                <select name="asi_ability_2" class="text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1">
+                    {% for ab, score in scores.items() %}
+                    <option value="{{ ab }}">{{ ab|upper }} ({{ score }} &rarr; {{ [score + 1, 20]|min }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# New Features #}
+    {% if gained_features %}
+    <div class="card p-4 mb-4 shadow-sm">
+        <h2 class="section-heading">New Features</h2>
+        <p class="text-xs text-th-muted mb-2">These will be added automatically</p>
+        {% for feat in gained_features %}
+        <div class="mb-2">
+            <div class="text-sm font-bold text-th-text">{{ feat.name }}</div>
+            {% if feat.desc %}
+            <div class="text-xs text-th-muted">{{ feat.desc[0][:200] }}{% if feat.desc[0]|length > 200 %}...{% endif %}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Spell Slot Changes #}
+    {% if slot_changes %}
+    <div class="card p-4 mb-4 shadow-sm">
+        <h2 class="section-heading">Spell Slot Changes</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-sm text-center">
+            {% for level, change in slot_changes.items() %}
+            <div class="stat-box">
+                <div class="text-xs text-th-heading">Level {{ level }}</div>
+                <div class="text-th-text">{{ change.old }} &rarr; {{ change.new }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# Confirm #}
+    <div class="flex items-center gap-4 mt-4">
+        <button type="submit" class="bg-th-accent hover:bg-th-accent-h text-white px-6 py-2 rounded-md font-bold transition-colors">
+            Level Up!
+        </button>
+        <a href="{{ url_for('characters.sheet', character_id=character.id) }}" class="text-th-faint hover:text-th-text text-sm transition-colors">
+            Cancel
+        </a>
+    </div>
+</form>
+
+<script>
+function rollHitDie(sides) {
+    const roll = Math.floor(Math.random() * sides) + 1;
+    document.getElementById('hp-roll-value').value = roll;
+    document.getElementById('hp-roll-result').textContent = 'Rolled: ' + roll;
+    document.getElementById('hp-roll-radio').checked = true;
+}
+</script>
+{% endblock %}

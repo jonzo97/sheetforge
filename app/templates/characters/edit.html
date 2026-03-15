@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ character.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('characters.sheet', character_id=character.id) }}"
+       class="text-sm text-th-faint hover:text-th-text transition-colors">&larr; Back to Character Sheet</a>
+</div>
+
+<h1 class="text-2xl font-brand font-bold text-th-text mb-4">Edit {{ character.name }}</h1>
+
+<form method="POST" action="{{ url_for('characters.edit', character_id=character.id) }}" class="space-y-4 max-w-4xl">
+
+    {# ===== Identity ===== #}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Identity</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+                <label for="name" class="block text-sm font-medium mb-1 text-th-text">Character Name *</label>
+                <input type="text" id="name" name="name" required
+                       value="{{ character.name }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="race" class="block text-sm font-medium mb-1 text-th-text">Race</label>
+                <input type="text" id="race" name="race"
+                       value="{{ character.race }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="race_index" class="block text-sm font-medium mb-1 text-th-text">Race Index</label>
+                <input type="text" id="race_index" name="race_index"
+                       value="{{ character.race_index or '' }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="subrace" class="block text-sm font-medium mb-1 text-th-text">Subrace</label>
+                <input type="text" id="subrace" name="subrace"
+                       value="{{ character.subrace or '' }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="background" class="block text-sm font-medium mb-1 text-th-text">Background</label>
+                <input type="text" id="background" name="background"
+                       value="{{ character.background }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="alignment" class="block text-sm font-medium mb-1 text-th-text">Alignment</label>
+                <select id="alignment" name="alignment"
+                        class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                    <option value="">Choose...</option>
+                    {% for a in ["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"] %}
+                    <option value="{{ a }}" {% if character.alignment == a %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="gender" class="block text-sm font-medium mb-1 text-th-text">Gender</label>
+                <input type="text" id="gender" name="gender"
+                       value="{{ character.gender or '' }}"
+                       placeholder="e.g. Female, Male, Non-binary..."
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+        </div>
+    </div>
+
+    {# ===== Class ===== #}
+    {% set cls = character.classes[0] if character.classes else none %}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Class</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+                <label for="class_name" class="block text-sm font-medium mb-1 text-th-text">Class Name</label>
+                <input type="text" id="class_name" name="class_name"
+                       value="{{ cls.class_name if cls else '' }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="class_index" class="block text-sm font-medium mb-1 text-th-text">Class Index</label>
+                <input type="text" id="class_index" name="class_index"
+                       value="{{ cls.class_index or '' if cls else '' }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="subclass" class="block text-sm font-medium mb-1 text-th-text">Subclass</label>
+                <input type="text" id="subclass" name="subclass"
+                       value="{{ cls.subclass or '' if cls else '' }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="level" class="block text-sm font-medium mb-1 text-th-text">Level (1-20)</label>
+                <input type="number" id="level" name="level" min="1" max="20"
+                       value="{{ character.level }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="hit_die" class="block text-sm font-medium mb-1 text-th-text">Hit Die</label>
+                <select id="hit_die" name="hit_die"
+                        class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                    {% for d in [4, 6, 8, 10, 12] %}
+                    <option value="{{ d }}" {% if cls and cls.hit_die == d %}selected{% endif %}>d{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# ===== Ability Scores ===== #}
+    {% set scores = character.ability_scores %}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Ability Scores</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {% set ability_data = [
+                ("str", "Strength",     scores.strength     if scores else 10),
+                ("dex", "Dexterity",    scores.dexterity    if scores else 10),
+                ("con", "Constitution", scores.constitution if scores else 10),
+                ("int", "Intelligence", scores.intelligence if scores else 10),
+                ("wis", "Wisdom",       scores.wisdom       if scores else 10),
+                ("cha", "Charisma",     scores.charisma     if scores else 10),
+            ] %}
+            {% for abbr, label, score in ability_data %}
+            <div class="text-center">
+                <label for="score_{{ abbr }}" class="block text-sm font-medium mb-1 text-th-text">{{ label }}</label>
+                <input type="number" id="score_{{ abbr }}" name="score_{{ abbr }}"
+                       min="1" max="30" value="{{ score }}"
+                       oninput="updateMod(this)"
+                       class="w-full text-sm text-center border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                <span class="mod-display text-xs text-th-faint">
+                    {{ "+" if (score - 10) // 2 >= 0 else "" }}{{ (score - 10) // 2 }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ===== Combat Stats ===== #}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Combat Stats</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+                <label for="max_hp" class="block text-sm font-medium mb-1 text-th-text">Max HP</label>
+                <input type="number" id="max_hp" name="max_hp" min="1"
+                       value="{{ character.max_hp }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="armor_class" class="block text-sm font-medium mb-1 text-th-text">Armor Class</label>
+                <input type="number" id="armor_class" name="armor_class" min="1" max="30"
+                       value="{{ character.armor_class }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="speed" class="block text-sm font-medium mb-1 text-th-text">Speed (ft)</label>
+                <input type="number" id="speed" name="speed" min="0" max="120"
+                       value="{{ character.speed }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+            <div>
+                <label for="initiative_bonus" class="block text-sm font-medium mb-1 text-th-text">Initiative Bonus</label>
+                <input type="number" id="initiative_bonus" name="initiative_bonus" min="-10" max="20"
+                       value="{{ character.initiative_bonus or 0 }}"
+                       class="w-full text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-th-accent">
+            </div>
+        </div>
+    </div>
+
+    {# ===== Saving Throw Proficiencies ===== #}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Saving Throw Proficiencies</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {% for abbr, label in [("str","Strength"),("dex","Dexterity"),("con","Constitution"),("int","Intelligence"),("wis","Wisdom"),("cha","Charisma")] %}
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="save_{{ abbr }}" value="1"
+                       {% if save_profs.get(abbr) %}checked{% endif %}
+                       class="rounded border-th-input-border text-th-accent focus:ring-th-accent">
+                <span class="text-sm text-th-text">{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ===== Skill Proficiencies ===== #}
+    <div class="card p-4 shadow-sm">
+        <h2 class="text-lg font-bold mb-3 text-th-text">Skill Proficiencies</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {% for skill in all_skills %}
+            {% set field_name = "skill_" + skill.replace(" ", "_").lower() %}
+            {% set current = skill_profs.get(skill, "none") %}
+            <div class="flex items-center gap-2">
+                <label for="{{ field_name }}" class="text-sm text-th-text w-36 shrink-0">
+                    {{ skill }}
+                    <span class="text-xs text-th-faint">({{ skill_abilities[skill]|upper }})</span>
+                </label>
+                <select id="{{ field_name }}" name="{{ field_name }}"
+                        class="flex-1 text-sm border border-th-input-border bg-th-input-bg text-th-text rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-th-accent">
+                    <option value="none" {% if current == "none" %}selected{% endif %}>None</option>
+                    <option value="proficient" {% if current == "proficient" %}selected{% endif %}>Proficient</option>
+                    <option value="expert" {% if current == "expert" %}selected{% endif %}>Expert</option>
+                </select>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ===== Actions ===== #}
+    <div class="flex items-center gap-4 mt-4">
+        <button type="submit"
+                class="bg-th-accent hover:bg-th-accent-h text-white px-6 py-2 rounded-md transition-colors text-sm font-medium">
+            Save Changes
+        </button>
+        <a href="{{ url_for('characters.sheet', character_id=character.id) }}"
+           class="text-th-faint hover:text-th-text text-sm transition-colors">
+            Cancel
+        </a>
+    </div>
+
+</form>
+
+<script>
+function updateMod(input) {
+    const score = parseInt(input.value) || 10;
+    const mod = Math.floor((score - 10) / 2);
+    input.parentElement.querySelector('.mod-display').textContent = (mod >= 0 ? '+' : '') + mod;
+}
+</script>
+{% endblock %}

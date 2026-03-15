@@ -199,6 +199,10 @@ _WARLOCK_SLOTS: list[dict[int, int]] = [
 FULL_CASTERS = {"bard", "cleric", "druid", "sorcerer", "wizard"}
 HALF_CASTERS = {"paladin", "ranger"}
 
+# Levels where Ability Score Improvement is available
+ASI_LEVELS = {4, 8, 12, 16, 19}
+FIGHTER_ASI_LEVELS = {4, 6, 8, 12, 14, 16, 19}
+
 # Weapon proficiency by class — "simple" and "martial" are categories
 WEAPON_PROFICIENCIES: dict[str, set[str]] = {
     "barbarian": {"simple", "martial"},

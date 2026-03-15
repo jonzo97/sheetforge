@@ -18,13 +18,14 @@ from app.models.character import (
 )
 from app.services import calculations as calc
 from app.services.character_creator import create_character
-from app.srd import get_all_weapons
 from app.srd import (
     ALL_SKILLS,
     SKILL_ABILITIES,
+    get_all_weapons,
     get_class,
     get_class_skill_choices,
     get_classes,
+    get_features_for_class,
     get_races,
     get_spells_for_class,
     get_subraces_for_race,
@@ -317,6 +318,296 @@ def delete(character_id: int):
     db.session.commit()
     flash(f"{name} has been deleted.", "info")
     return redirect(url_for("characters.character_list"))
+
+
+@characters_bp.route("/<int:character_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(character_id: int):
+    """Edit a character's core stats."""
+    character = db.session.get(Character, character_id)
+    if not character or character.user_id != current_user.id:
+        flash("Character not found.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    if request.method == "POST":
+        return _handle_edit(character)
+
+    skill_profs = {sp.skill_name: sp.proficiency_type for sp in character.skill_proficiencies}
+    save_profs = {stp.ability: stp.proficient for stp in character.saving_throw_proficiencies}
+
+    return render_template(
+        "characters/edit.html",
+        character=character,
+        skill_profs=skill_profs,
+        save_profs=save_profs,
+        all_skills=ALL_SKILLS,
+        skill_abilities=SKILL_ABILITIES,
+    )
+
+
+def _handle_edit(character: Character):
+    """Process the character edit form submission.
+
+    Args:
+        character: The Character ORM object to update (ownership already verified).
+
+    Returns:
+        A redirect response.
+    """
+    form = request.form
+
+    # Identity fields
+    name = form.get("name", "").strip()
+    if not name:
+        flash("Character name is required.", "error")
+        return redirect(url_for("characters.edit", character_id=character.id))
+    character.name = name[:100]
+    character.race = form.get("race", "").strip()[:50] or character.race
+    character.race_index = form.get("race_index", "").strip()[:50] or None
+    character.subrace = form.get("subrace", "").strip()[:50] or None
+    character.background = form.get("background", "").strip()[:50] or "Custom"
+    character.alignment = form.get("alignment", "")[:50]
+    character.gender = form.get("gender", "").strip()[:30]
+
+    # Level and derived stats
+    level = _clamp(form.get("level"), 1, 20, character.level)
+    character.level = level
+    character.proficiency_bonus = calc.proficiency_bonus(level)
+    character.hit_dice_total = level
+    character.hit_dice_remaining = min(character.hit_dice_remaining, level)
+
+    # Combat stats
+    character.max_hp = _clamp(form.get("max_hp"), 1, 9999, character.max_hp)
+    character.current_hp = min(character.current_hp, character.max_hp)
+    character.armor_class = _clamp(form.get("armor_class"), 1, 30, character.armor_class)
+    character.speed = _clamp(form.get("speed"), 0, 120, character.speed)
+    character.initiative_bonus = _clamp(form.get("initiative_bonus"), -10, 20, character.initiative_bonus)
+
+    # Ability scores
+    scores = character.ability_scores
+    if scores:
+        scores.strength = _clamp(form.get("score_str"), 1, 30, scores.strength)
+        scores.dexterity = _clamp(form.get("score_dex"), 1, 30, scores.dexterity)
+        scores.constitution = _clamp(form.get("score_con"), 1, 30, scores.constitution)
+        scores.intelligence = _clamp(form.get("score_int"), 1, 30, scores.intelligence)
+        scores.wisdom = _clamp(form.get("score_wis"), 1, 30, scores.wisdom)
+        scores.charisma = _clamp(form.get("score_cha"), 1, 30, scores.charisma)
+
+    # Character class (first class only)
+    if character.classes:
+        cls = character.classes[0]
+        cls_name = form.get("class_name", "").strip()
+        if cls_name:
+            cls.class_name = cls_name[:50]
+        cls.class_index = form.get("class_index", "").strip()[:50] or None
+        cls.subclass = form.get("subclass", "").strip()[:50] or None
+        cls.level = level
+        cls.hit_die = _clamp(form.get("hit_die"), 4, 12, cls.hit_die)
+
+    # Skill proficiencies — replace all
+    for sp in list(character.skill_proficiencies):
+        db.session.delete(sp)
+    for skill in ALL_SKILLS:
+        field_name = "skill_" + skill.replace(" ", "_").lower()
+        value = form.get(field_name, "none")
+        if value in ("proficient", "expert"):
+            db.session.add(SkillProficiency(
+                character_id=character.id,
+                skill_name=skill,
+                proficiency_type=value,
+            ))
+
+    # Saving throw proficiencies — replace all
+    for stp in list(character.saving_throw_proficiencies):
+        db.session.delete(stp)
+    for ability in ("str", "dex", "con", "int", "wis", "cha"):
+        if form.get(f"save_{ability}"):
+            db.session.add(SavingThrowProficiency(
+                character_id=character.id,
+                ability=ability,
+                proficient=True,
+            ))
+
+    db.session.commit()
+    flash(f"{character.name} updated!", "success")
+    return redirect(url_for("characters.sheet", character_id=character.id))
+
+
+# --- Level Up ---
+
+ABILITY_MAP = {
+    "str": "strength",
+    "dex": "dexterity",
+    "con": "constitution",
+    "int": "intelligence",
+    "wis": "wisdom",
+    "cha": "charisma",
+}
+
+
+@characters_bp.route("/<int:character_id>/level-up", methods=["GET"])
+@login_required
+def level_up(character_id: int):
+    """Display the level-up wizard for a character."""
+    character = db.session.get(Character, character_id)
+    if not character or character.user_id != current_user.id:
+        flash("Character not found.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    if character.level >= 20:
+        flash("This character is already at maximum level.", "error")
+        return redirect(url_for("characters.sheet", character_id=character.id))
+
+    cls = character.classes[0] if character.classes else None
+    class_index = cls.class_index if cls else ""
+    hit_die = cls.hit_die if cls else 8
+    new_level = character.level + 1
+
+    con_score = character.ability_scores.constitution if character.ability_scores else 10
+    con_mod = calc.ability_modifier(con_score)
+
+    avg_hp = hit_die // 2 + 1 + con_mod
+
+    if class_index == "fighter":
+        is_asi_level = new_level in calc.FIGHTER_ASI_LEVELS
+    else:
+        is_asi_level = new_level in calc.ASI_LEVELS
+
+    old_names = {f["name"] for f in get_features_for_class(class_index, character.level)}
+    new_features_list = get_features_for_class(class_index, new_level)
+    gained_features = [f for f in new_features_list if f["name"] not in old_names]
+
+    old_prof = calc.proficiency_bonus(character.level)
+    new_prof = calc.proficiency_bonus(new_level)
+    prof_changed = old_prof != new_prof
+
+    old_slots = calc.spell_slots_for_level(class_index, character.level)
+    new_slots = calc.spell_slots_for_level(class_index, new_level)
+    slot_changes = {}
+    all_levels = set(old_slots.keys()) | set(new_slots.keys())
+    for lvl in sorted(all_levels):
+        old_count = old_slots.get(lvl, 0)
+        new_count = new_slots.get(lvl, 0)
+        if old_count != new_count:
+            slot_changes[lvl] = {"old": old_count, "new": new_count}
+
+    scores = character.ability_scores.as_dict() if character.ability_scores else {}
+
+    return render_template(
+        "characters/level_up.html",
+        character=character,
+        new_level=new_level,
+        hit_die=hit_die,
+        con_mod=con_mod,
+        avg_hp=avg_hp,
+        is_asi_level=is_asi_level,
+        gained_features=gained_features,
+        prof_changed=prof_changed,
+        old_prof=old_prof,
+        new_prof=new_prof,
+        slot_changes=slot_changes,
+        scores=scores,
+    )
+
+
+@characters_bp.route("/<int:character_id>/level-up", methods=["POST"])
+@login_required
+def level_up_post(character_id: int):
+    """Process the level-up form submission."""
+    character = db.session.get(Character, character_id)
+    if not character or character.user_id != current_user.id:
+        flash("Character not found.", "error")
+        return redirect(url_for("characters.character_list"))
+
+    if character.level >= 20:
+        flash("This character is already at maximum level.", "error")
+        return redirect(url_for("characters.sheet", character_id=character.id))
+
+    cls = character.classes[0] if character.classes else None
+    class_index = cls.class_index if cls else ""
+    hit_die = cls.hit_die if cls else 8
+    new_level = character.level + 1
+
+    con_score = character.ability_scores.constitution if character.ability_scores else 10
+    con_mod = calc.ability_modifier(con_score)
+
+    # HP gain
+    hp_choice = request.form.get("hp_choice", "average")
+    if hp_choice == "roll":
+        try:
+            hp_roll_value = int(request.form.get("hp_roll_value", 0))
+        except (ValueError, TypeError):
+            hp_roll_value = 0
+        hp_gain = max(1, hp_roll_value) + con_mod
+    else:
+        hp_gain = hit_die // 2 + 1 + con_mod
+    hp_gain = max(1, hp_gain)
+
+    # Apply level-up changes
+    character.level = new_level
+    if cls:
+        cls.level = new_level
+    character.max_hp += hp_gain
+    character.current_hp = character.max_hp
+    character.proficiency_bonus = calc.proficiency_bonus(new_level)
+    character.hit_dice_total = new_level
+    character.hit_dice_remaining = new_level
+
+    # ASI
+    if class_index == "fighter":
+        is_asi_level = new_level in calc.FIGHTER_ASI_LEVELS
+    else:
+        is_asi_level = new_level in calc.ASI_LEVELS
+
+    if is_asi_level and character.ability_scores:
+        asi_mode = request.form.get("asi_mode", "plus2")
+        if asi_mode == "plus2":
+            asi_ability_1 = request.form.get("asi_ability_1")
+            if asi_ability_1 and asi_ability_1 in ABILITY_MAP:
+                long_name = ABILITY_MAP[asi_ability_1]
+                current_val = getattr(character.ability_scores, long_name, 10)
+                setattr(character.ability_scores, long_name, min(20, current_val + 2))
+        elif asi_mode == "plus1plus1":
+            asi_ability_1 = request.form.get("asi_ability_1_a")
+            asi_ability_2 = request.form.get("asi_ability_2")
+            if asi_ability_1 and asi_ability_1 in ABILITY_MAP:
+                long_name = ABILITY_MAP[asi_ability_1]
+                current_val = getattr(character.ability_scores, long_name, 10)
+                setattr(character.ability_scores, long_name, min(20, current_val + 1))
+            if asi_ability_2 and asi_ability_2 in ABILITY_MAP:
+                long_name = ABILITY_MAP[asi_ability_2]
+                current_val = getattr(character.ability_scores, long_name, 10)
+                setattr(character.ability_scores, long_name, min(20, current_val + 1))
+
+    # New features
+    old_names = {f["name"] for f in get_features_for_class(class_index, character.level - 1)}
+    new_features_list = get_features_for_class(class_index, new_level)
+    gained_features = [f for f in new_features_list if f["name"] not in old_names]
+    for feat in gained_features:
+        desc_list = feat.get("desc", [])
+        description = "\n".join(desc_list) if desc_list else ""
+        db.session.add(ClassFeature(
+            character_id=character.id,
+            feature_name=feat["name"],
+            description=description,
+            source=cls.class_name if cls else "",
+        ))
+
+    # Spell slots — delete and recreate
+    for slot in list(character.spell_slots):
+        db.session.delete(slot)
+    new_slots = calc.spell_slots_for_level(class_index, new_level)
+    for slot_level, count in new_slots.items():
+        db.session.add(SpellSlot(
+            character_id=character.id,
+            slot_level=slot_level,
+            total=count,
+            used=0,
+        ))
+
+    db.session.commit()
+    flash(f"{character.name} is now level {new_level}!", "success")
+    return redirect(url_for("characters.sheet", character_id=character.id))
 
 
 # --- Export / Import ---
